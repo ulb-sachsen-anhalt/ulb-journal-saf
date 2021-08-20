@@ -1,0 +1,7 @@
+# ignore python artifacts
+**/__pycache__
+venv
+
+# ignore ide artifacts
+.vscode
+
