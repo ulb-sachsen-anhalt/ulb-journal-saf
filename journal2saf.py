@@ -76,7 +76,7 @@ class JournalPoll():
         g = CP['general']
         self.endpoint_contexts = g['endpoint_contexts']
         self.endpoint_submissions = g['endpoint_submissions']
-        self.journal_server = f"{g['protokoll']}{g['journal_server']}/"
+        self.journal_server = f"{g['journal_server']}/"
         self.token = f"?apiToken={g['api_token']}"
 
     def _server_request(self, query) -> dict:
