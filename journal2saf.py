@@ -16,34 +16,10 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
 
 CP = ConfigParser()
-CONFIGURATION = "conf/config.ini"
+CP.read("conf/config.ini")
 
 
-class Config:
-    """just a config loader"""
-
-    def __init__(self):
-        self.init()
-        self.load_config()
-
-    def init(self, config=CONFIGURATION) -> None:
-        logging.info(f"read configuration from: {config}")
-        CP.read(config)
-        self.config = CP
-
-    def load_config(self) -> None:
-        g = CP['general']
-        self.api_token = g['api_token']
-        self.endpoint_contexts = g['endpoint_contexts']
-        self.endpoint_submissions = g['endpoint_submissions']
-        self.journal_server = g['journal_server']
-        if not self.journal_server.endswith('/'):
-            self.journal_server += '/'
-        self.protokoll = g['protokoll']
-        self.api_query_key = '?apiToken='
-
-
-class Journal(Config):
+class Journal():
     """This class is going to store single journal objects"""
 
     def __init__(self, data):
@@ -51,19 +27,8 @@ class Journal(Config):
         # https://public.bibliothek.uni-halle.de/hercynia/api/v1/contexts/6
         self.url_path = data['urlPath']
         self.submissions = []
-
-    def server_submissions(self, jounal_name) -> str:
-        rest_call = ''.join([
-            self.protokoll,
-            self.journal_server,
-            jounal_name,
-            self.endpoint_submissions,
-            self.api_query_key,
-            self.api_token])
-        logging.info(
-            "build submissions REST call: "
-            f"{rest_call[:-len(self.api_token)]}XXX")
-        return rest_call
+        self.publications = []
+        self.galleys = []
 
 
 class Submission:
@@ -72,15 +37,18 @@ class Submission:
     def __init__(self, data, parent):
         self._href = data['_href']
         self.parent = parent
+        self.data = data
         self.publications = []
 
-    def extract_submission(self, submission) -> None:
-        for publ in submission['publications']:
-            for galley_data in publ['galleys']:
-                galley = Galley(galley_data, self)
-                if galley.approved is True:
-                    print('.', end="")
-                    # print(publ['_href'], galley.href, galley.approved)
+
+class Publication:
+    """This class is going to store publication objects"""
+
+    def __init__(self, data, parent):
+        self._href = data['_href']
+        self.parent = parent
+        self.data = data
+        self.galleys = []
 
 
 class Galley:
@@ -90,42 +58,61 @@ class Galley:
         # https://publicdev.bibliothek.uni-halle.de/hercynia/api/v1/submissions
         self.parent = parent
         self.href = data['file']['_href']
+        self.url = data['file']['url']
         self.approved = data['isApproved']
 
 
-class JournalPoll(Config):
-    """This class is doing to requests the journal server
+class JournalPoll():
+    """This class is going to requests the journal server
        and even creating/collecting instances
        of submissions and publication objects
     """
 
     def __init__(self):
-        self.init()
         self.journals = []
-        super().__init__()
+        self.load_config()
+
+    def load_config(self) -> None:
+        g = CP['general']
+        self.endpoint_contexts = g['endpoint_contexts']
+        self.endpoint_submissions = g['endpoint_submissions']
+        self.journal_server = f"{g['protokoll']}{g['journal_server']}/"
+        self.token = f"?apiToken={g['api_token']}"
 
     def _server_request(self, query) -> dict:
         # no need to verify, 'cause we trust the server
         result = requests.get(query, verify=False)
         result_dct = result.json()
+        if 'error' in result_dct.keys():
+            raise ValueError(result_dct)
         return result_dct
 
     def server_contexts(self) -> str:
         rest_call = ''.join([
-            self.protokoll,
             self.journal_server,
             self.endpoint_contexts,
-            self.api_query_key,
-            self.api_token])
+            self.token])
         logging.info(
-            f"build contexts REST call: {rest_call[:-len(self.api_token)]}XXX")
+            f"build contexts REST call:"
+            f"{rest_call[:-len(self.token)+10]}XXX")
+        return rest_call
+
+    def server_submissions(self, jounal_name) -> str:
+        rest_call = ''.join([
+            self.journal_server,
+            jounal_name,
+            self.endpoint_submissions,
+            self.token])
+        logging.debug(
+            "build submissions REST call: "
+            f"{rest_call[:-len(self.token)+10]}XXX")
         return rest_call
 
     def pull_contexts(self) -> None:
         query_contexts = self.server_contexts()
         self.journals_dict = self._server_request(query_contexts)
 
-    def pull_jounales(self) -> None:
+    def extract_jounales(self) -> None:
         data = self.journals_dict
         if 'items' in data.keys():
             logging.info(f"{len(data['items'])} journals found")
@@ -134,33 +121,47 @@ class JournalPoll(Config):
                 self.journals.append(journal_obj)
 
     def pull_submissions(self) -> None:
-        for journal in self.journals[:2]:
+        for journal in self.journals[:-1]:
             journal_name = journal.url_path
-            s = journal.server_submissions(journal_name)
+            s = self.server_submissions(journal_name)
             result = self._server_request(s)
             logging.info(
                 f"proccess {result['itemsMax']} "
                 f"submissions for '{journal_name}'")
             for submission in result['items']:
                 subm_obj = Submission(submission, self)
-                subm_obj.extract_submission(submission)
                 journal.submissions.append(subm_obj)
 
-    def pull_galleys(self) -> None:
-        pass
+    def extract_publications(self) -> None:
+        for journal in self.journals:
+            journal_name = journal.url_path
+            logging.info(
+                f"proccess {len(journal.submissions)} "
+                f"submissions for '{journal_name}'")
+            for subm in journal.submissions:
+                for publ in subm.data['publications']:
+                    publ_obj = Publication(publ, self)
+                    journal.publications.append(publ_obj)
+
+    def extract_galleys(self) -> None:
+        for j, journal in enumerate(self.journals, start=1):
+            for s, subm in enumerate(journal.submissions, start=1):
+                for p, publ in enumerate(subm.data['publications'], start=1):
+                    for g, galley in enumerate(publ['galleys'], start=1):
+                        galley_obj = Galley(galley, self)
+                        journal.galleys.append(galley_obj)
+        logging.info(
+            f"proccess {j} journals, {s} submissions, "
+            f"{p} publications {g} galleys")
 
 
 def main():
-    Config()
     jp = JournalPoll()
     jp.pull_contexts()
-    jp.pull_jounales()
+    jp.extract_jounales()
     jp.pull_submissions()
-    jp.pull_galleys()
-
-
-    # print(journals)
-    # print(json_obj.text)
+    jp.extract_publications()
+    jp.extract_galleys()
 
 
 if __name__ == "__main__":
