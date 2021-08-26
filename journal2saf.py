@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
 
+import re
 import logging
+import argparse
 import requests
 import warnings
 import pycountry
-
+from urllib.parse import quote_plus
 from pathlib import Path
 from configparser import ConfigParser
 
 warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
-__all__ = ['JournalPoll']
+__all__ = ['JournalPoll', 'ExportSAF']
+
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
+logger = logging.getLogger(__file__)
 
 CP = ConfigParser()
 CP.read("conf/config.ini")
@@ -93,7 +97,7 @@ class JournalPoll():
             self.journal_server,
             self.endpoint_contexts,
             self.token])
-        logging.info(
+        logger.info(
             f"build contexts REST call:"
             f"{rest_call[:-len(self.token)+10]}XXX")
         return rest_call
@@ -104,30 +108,30 @@ class JournalPoll():
             jounal_name,
             self.endpoint_submissions,
             self.token])
-        logging.debug(
+        logger.debug(
             "build submissions REST call: "
             f"{rest_call[:-len(self.token)+10]}XXX")
         return rest_call
 
-    def pull_contexts(self) -> None:
+    def request_contexts(self) -> None:
         query_contexts = self.server_contexts()
         self.journals_dict = self._server_request(query_contexts)
 
     def extract_jounales(self, max=-1) -> None:
         data = self.journals_dict
         if 'items' in data.keys():
-            logging.info(f"{len(data['items'])} journals found")
+            logger.info(f"{len(data['items'])} journals found")
             for data in data['items'][:max]:
                 journal_obj = Journal(data)
                 self.journals.append(journal_obj)
 
-    def pull_submissions(self) -> None:
+    def request_submissions(self) -> None:
         for journal in self.journals:
             journal_name = journal.url_path
             s = self.server_submissions(journal_name)
             result = self._server_request(s)
-            logging.info(
-                f"proccess {result['itemsMax']} "
+            logger.info(
+                f"request {len(result['items'])} "
                 f"submissions for '{journal_name}'")
             for submission in result['items']:
                 subm_obj = Submission(submission, self)
@@ -136,11 +140,21 @@ class JournalPoll():
     def extract_publications(self) -> None:
         for journal in self.journals:
             journal_name = journal.url_path
-            logging.info(
-                f"proccess {len(journal.submissions)} "
-                f"submissions for '{journal_name}'")
+            logger.info(
+                f"extract {len(journal.submissions)} "
+                f"submission items for '{journal_name}'")
             for subm in journal.submissions:
                 for publ in subm.data['publications']:
+                    status = publ.get('status')
+                    locale = publ.get('locale')
+                    if status != 3:
+                        logger.info(
+                            f"status {status} (unveröffentlicht)"
+                            f" {publ.get('fullTitle')[locale]} ")
+                        continue
+                    logger.debug(
+                        f"status {status} for {locale}"
+                        f" {publ.get('fullTitle')[locale]} ")
                     publ_obj = Publication(publ, self)
                     journal.publications.append(publ_obj)
 
@@ -152,7 +166,7 @@ class JournalPoll():
                     for g, galley in enumerate(publ['galleys'], start=1):
                         galley_obj = Galley(galley, self)
                         journal.galleys.append(galley_obj)
-        logging.info(
+        logger.info(
             f"proccess {j} journals, {s} submissions, "
             f"{p} publications {g} galleys")
 
@@ -166,8 +180,10 @@ class ExportSAF:
 
     def load_config(self) -> None:
         e = CP['export']
+        g = CP['general']
         self.export_path = e['export_path']
         self.collection = e['collection']
+        self.token = f"&apiToken={g['api_token']}"
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, name, schema='') -> None:
@@ -224,39 +240,74 @@ class ExportSAF:
         isolang = self.locale2isolang(data.get('locale'))
         dcl.append(('language', 'iso', '', isolang), )
         galleys = data.get('galleys')
-        assert len(galleys) == 1
-        galley = galleys[0]
-        file_ = galley.get('file')
-        for locale, desc in file_.get('description').items():
-            lang = self.locale2isolang(locale)
-            if desc:
-                dcl.append(
-                    ('description', 'abstract', f' language="{lang}"', desc), )
-                dcl.append(
-                    ('description', 'abstract', f' language="{lang}"', desc),
-                )
-        dcl.append(('type', 'none', '', file_.get('mimetype')), )
+
+        for galley in galleys:
+            file_ = galley.get('file')
+            for locale, desc in file_.get('description').items():
+                lang = self.locale2isolang(locale)
+                if desc:
+                    dcl.append(
+                        ('description', 'abstract',
+                         f' language="{lang}"', desc), )
+                    dcl.append(
+                        ('description', 'abstract',
+                         f' language="{lang}"', desc),
+                    )
+            dcl.append(('type', 'none', '', file_.get('mimetype')), )
         self.write_xml_file(folder, dcl, 'dublin_core.xml')
 
     @staticmethod
-    def download_galley(work_dir, data):
-        pass
+    def get_filename_from_cd(cd):
+        """
+        Get filename from content-disposition
+        """
+        if not cd:
+            return None
+        fname = re.findall('filename=(.+)', cd)
+        if len(fname) == 0:
+            return None
+        return fname[0]
+
+    def download_galley(self, work_dir, data):
+        galleys = data.get('galleys')
+        for galley in galleys:
+            filedata = galley.get('file')
+            url_published = data.get('urlPublished')
+            submission_file_id = galley.get('submissionFileId')
+            galley_id = galley.get('id')
+
+            url = url_published.replace('view', 'download')
+            url1 = url.replace('version', str(galley_id))
+            url = f"{url1.rsplit('/', 1)[0]}/{submission_file_id}"
+
+    
+            locale = galley.get('locale', None)
+
+            print(work_dir, filedata.get('name')[locale])
+            filename = (filedata.get('name')[locale]).replace(' ', '')
+            pth = work_dir / filename
+            r = requests.get(url, verify=False)
+            print(url)
+
+            with open(pth, 'wb') as fh:
+                for chunk in r.iter_content(chunk_size=16*1024):
+                    # print(chunk)
+                    fh.write(chunk)
 
     def export(self) -> None:
         for journal in self.journals:
             j_name = journal.url_path
-            for submission in journal.submissions:
+            for num, submission in enumerate(journal.submissions, start=1):
                 status = submission.data['status']
                 if status != 3:  # 3 --> published
                     continue
                 publ = submission.data['publications']
-                logging.debug(f"write journal folder '{j_name}'")
+                # logger.debug(f"write journal folder '{j_name}'")
                 assert len(publ) == 1
                 publ = publ[0]
 
-                item_number = 1
                 item_folder = Path(self.export_path)\
-                    .joinpath(j_name, f'item_{item_number:03}')
+                    .joinpath(j_name, f'item_{num:03}')
 
                 self.create_meta_file(item_folder, publ)
                 schema = 'local'
@@ -268,15 +319,14 @@ class ExportSAF:
                 self.write_collections_file(item_folder, self.collection)
                 self.download_galley(item_folder, publ)
 
-
             # shutil.make_archive(saf_dir, zip, saf_dir)
 
 
 def main():
     jp = JournalPoll()
-    jp.pull_contexts()
+    jp.request_contexts()
     jp.extract_jounales(1)
-    jp.pull_submissions()
+    jp.request_submissions()
     jp.extract_publications()
     jp.extract_galleys()
 
@@ -285,4 +335,14 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=("Request Journalserver(OJS/OMP)"
+                     " and build SAF's of all published Submissions"))
+    parser.add_argument(
+        "-v", "--verbose", help="increase output verbosity",
+        action="store_true")
+    args = parser.parse_args()
+    if args.verbose:
+        logger.setLevel(level=logging.DEBUG)
+
     main()
