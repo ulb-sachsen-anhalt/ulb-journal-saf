@@ -250,8 +250,16 @@ class ExportSAF:
 
             filename = (filedata.get('name')[locale]).replace(' ', '')
             if filename == '':
-                logging.error(f'missing filename for locale:{locale} {url}')
-                filename = 'error_missing_filename'
+                logging.error(f'missing filename for locale:{locale}')
+                for _loc, name in filedata.get('name').items():
+                    if len(name):
+                        filename = name
+                        logging.info(
+                            f'use filename for locale:{_loc} instead: "{name}"')
+                        break
+                else:
+                    filename = 'missing_filname'
+
             export_path = work_dir / filename
             with open(export_path, 'wb') as fh:
                 for chunk in response.iter_content(chunk_size=16*1024):
@@ -275,9 +283,10 @@ class ExportSAF:
                     .joinpath(journal_name, f'item_{num:03}')
 
                 self.create_meta_file(item_folder, publ)
+
                 schema = 'local'
-                self.write_xml_file(item_folder, [
-                    ('doi', 'disabled', '', 'true'), ],
+                self.write_xml_file(
+                    item_folder, [],
                     f'metadata_{schema}.xml',
                     schema="local")
 
@@ -295,10 +304,11 @@ class ExportSAF:
             if Path(zipfile).is_file():
                 shutil.rmtree(journal)
 
+
 def main():
     jp = JournalPoll()
     jp.request_contexts()
-    jp.extract_jounales(2)
+    jp.extract_jounales(5)
     jp.request_submissions()
 
     saf = ExportSAF(jp.journals)
