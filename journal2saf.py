@@ -3,10 +3,10 @@
 import re
 import logging
 import argparse
+import shutil
 import requests
 import warnings
 import pycountry
-from urllib.parse import quote_plus
 from pathlib import Path
 from configparser import ConfigParser
 
@@ -31,6 +31,7 @@ class Journal():
         super().__init__()
         # https://public.bibliothek.uni-halle.de/hercynia/api/v1/contexts/6
         self.url_path = data['urlPath']
+        self.url = data['url']
         self.submissions = []
         self.publications = []
         self.galleys = []
@@ -137,42 +138,9 @@ class JournalPoll():
                 subm_obj = Submission(submission, self)
                 journal.submissions.append(subm_obj)
 
-    def extract_publications(self) -> None:
-        for journal in self.journals:
-            journal_name = journal.url_path
-            logger.info(
-                f"extract {len(journal.submissions)} "
-                f"submission items for '{journal_name}'")
-            for subm in journal.submissions:
-                for publ in subm.data['publications']:
-                    status = publ.get('status')
-                    locale = publ.get('locale')
-                    if status != 3:
-                        logger.info(
-                            f"status {status} (unveröffentlicht)"
-                            f" {publ.get('fullTitle')[locale]} ")
-                        continue
-                    logger.debug(
-                        f"status {status} for {locale}"
-                        f" {publ.get('fullTitle')[locale]} ")
-                    publ_obj = Publication(publ, self)
-                    journal.publications.append(publ_obj)
-
-    def extract_galleys(self) -> None:
-        s = p = g = 0
-        for j, journal in enumerate(self.journals, start=1):
-            for s, subm in enumerate(journal.submissions, start=1):
-                for p, publ in enumerate(subm.data['publications'], start=1):
-                    for g, galley in enumerate(publ['galleys'], start=1):
-                        galley_obj = Galley(galley, self)
-                        journal.galleys.append(galley_obj)
-        logger.info(
-            f"proccess {j} journals, {s} submissions, "
-            f"{p} publications {g} galleys")
-
 
 class ExportSAF:
-    """Export given data to Simple Archive Format"""
+    """Export given data to -Simple Archive Format-"""
 
     def __init__(self, journals):
         self.journals = journals
@@ -184,15 +152,15 @@ class ExportSAF:
         self.export_path = e['export_path']
         self.collection = e['collection']
         self.token = f"&apiToken={g['api_token']}"
+        self.journal_server = g['journal_server']
 
     @staticmethod
-    def write_xml_file(work_dir, dblcore, name, schema='') -> None:
+    def write_xml_file(work_dir, dblcore, name, schema=None) -> None:
         work_dir.mkdir(parents=True, exist_ok=True)
         pth = work_dir / name
         dcline = '  <dcvalue element="{}" qualifier="{}"{}>{}</dcvalue>'
         dcvalues = [dcline.format(*tpl) for tpl in dblcore]
-        if schema != '':
-            schema = f' schema="{schema}"'
+        schema = f' schema="{schema}"' if schema else ''
 
         with open(pth, 'w') as fh:
             fh.write('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -249,11 +217,9 @@ class ExportSAF:
                     dcl.append(
                         ('description', 'abstract',
                          f' language="{lang}"', desc), )
-                    dcl.append(
-                        ('description', 'abstract',
-                         f' language="{lang}"', desc),
-                    )
+
             dcl.append(('type', 'none', '', file_.get('mimetype')), )
+
         self.write_xml_file(folder, dcl, 'dublin_core.xml')
 
     @staticmethod
@@ -268,70 +234,76 @@ class ExportSAF:
             return None
         return fname[0]
 
-    def download_galley(self, work_dir, data):
+    def download_galley(self, journal, work_dir, data) -> list:
         galleys = data.get('galleys')
+        filenames = []
         for galley in galleys:
-            filedata = galley.get('file')
-            url_published = data.get('urlPublished')
-            submission_file_id = galley.get('submissionFileId')
             galley_id = galley.get('id')
+            filedata = galley.get('file')
+            submission_id = filedata.get('submissionId')
+            submission_file_id = galley.get('submissionFileId')
 
-            url = url_published.replace('view', 'download')
-            url1 = url.replace('version', str(galley_id))
-            url = f"{url1.rsplit('/', 1)[0]}/{submission_file_id}"
-
-    
             locale = galley.get('locale', None)
+            url = "{}/article/download/{}/{}/{}".format(
+                journal, submission_id, galley_id, submission_file_id)
+            response = requests.get(url, verify=False)
 
-            print(work_dir, filedata.get('name')[locale])
             filename = (filedata.get('name')[locale]).replace(' ', '')
-            pth = work_dir / filename
-            r = requests.get(url, verify=False)
-            print(url)
-
-            with open(pth, 'wb') as fh:
-                for chunk in r.iter_content(chunk_size=16*1024):
-                    # print(chunk)
+            if filename == '':
+                logging.error(f'missing filename for locale:{locale} {url}')
+                filename = 'error_missing_filename'
+            export_path = work_dir / filename
+            with open(export_path, 'wb') as fh:
+                for chunk in response.iter_content(chunk_size=16*1024):
                     fh.write(chunk)
+                filenames.append(filename)
+        return filenames
 
     def export(self) -> None:
         for journal in self.journals:
-            j_name = journal.url_path
+            journal_name = journal.url_path
+            journal_path = journal.url
             for num, submission in enumerate(journal.submissions, start=1):
                 status = submission.data['status']
                 if status != 3:  # 3 --> published
                     continue
                 publ = submission.data['publications']
-                # logger.debug(f"write journal folder '{j_name}'")
                 assert len(publ) == 1
                 publ = publ[0]
 
                 item_folder = Path(self.export_path)\
-                    .joinpath(j_name, f'item_{num:03}')
+                    .joinpath(journal_name, f'item_{num:03}')
 
                 self.create_meta_file(item_folder, publ)
                 schema = 'local'
                 self.write_xml_file(item_folder, [
-                    ('title', 'none', '', 'Hans im mähriſchen Glück'),
-                    ('date', 'issued', '', '1982')], f'metadata_{schema}.xml',
+                    ('doi', 'disabled', '', 'true'), ],
+                    f'metadata_{schema}.xml',
                     schema="local")
-                self.write_contens_file(item_folder, ['1', '2', 'n'])
+
                 self.write_collections_file(item_folder, self.collection)
-                self.download_galley(item_folder, publ)
+                filenames = self.download_galley(
+                    journal_path, item_folder, publ)
+                self.write_contens_file(item_folder, filenames)
 
-            # shutil.make_archive(saf_dir, zip, saf_dir)
-
+    def write_zips(self):
+        export_pth = Path(self.export_path)
+        journals = [d for d in export_pth.iterdir() if d.is_dir()]
+        for journal in journals:
+            logging.info(f'zip folder at {journal}')
+            zipfile = shutil.make_archive(journal, 'zip', journal)
+            if Path(zipfile).is_file():
+                shutil.rmtree(journal)
 
 def main():
     jp = JournalPoll()
     jp.request_contexts()
-    jp.extract_jounales(1)
+    jp.extract_jounales(2)
     jp.request_submissions()
-    jp.extract_publications()
-    jp.extract_galleys()
 
     saf = ExportSAF(jp.journals)
     saf.export()
+    saf.write_zips()
 
 
 if __name__ == "__main__":
