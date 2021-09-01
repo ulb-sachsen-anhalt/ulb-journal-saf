@@ -169,19 +169,6 @@ class ExportSAF:
             fh.write('\n</dublin_core>')
 
     @staticmethod
-    def write_contens_file(work_dir, file_list) -> None:
-        pth = work_dir / 'contens'
-        with open(pth, 'w') as fh:
-            fh.writelines("{}\n".format(line) for line in file_list)
-
-    @staticmethod
-    def write_collections_file(work_dir, collection) -> None:
-        outfile = 'collections'
-        pth = work_dir / outfile
-        with open(pth, 'w') as fh:
-            fh.write(collection)
-
-    @staticmethod
     def locale2isolang(local_code) -> str:
         locale = local_code[0:2]
         lang = pycountry.languages.get(alpha_2=locale)
@@ -189,26 +176,74 @@ class ExportSAF:
             else lang.alpha_3
         return isolang
 
-    def create_meta_file(self, folder, data) -> None:
-        dcl = []
-        for locale, title in data['title'].items():
-            lang = self.locale2isolang(locale)
-            if title:
-                dcl.append(
-                    ('title', 'none', f' language="{lang}"', title), )
-                dcl.append(
-                    ('title', 'alternative', f' language="{lang}"', title),
-                )
+    @staticmethod
+    def write_contens_file(work_dir, file_list) -> None:
+        filename = 'contens'
+        pth = work_dir / filename
+        with open(pth, 'w') as fh:
+            fh.writelines("{}\n".format(line) for line in file_list)
 
+    @staticmethod
+    def write_collections_file(work_dir, collection) -> None:
+        filename = 'collections'
+        pth = work_dir / filename
+        with open(pth, 'w') as fh:
+            fh.write(collection)
+
+    def write_local_file(self, item_folder, data):
+        schema = 'local'
+        mapping = []
+        # local.OJSinternalid
+        id_ = data.get('id')
+
+        # local.bibliographicCitation.page<{start,end}>
+        ('OJSinternalid', 'none', '', id_),
+        try:
+            start, end = data.get('pages').split('-')
+            mapping.extend([
+                ('bibliographicCitation', 'pagestart', '', start),
+                ('bibliographicCitation', 'pageend', '', end)]
+            )
+        except ValueError:
+            logger.info(f'pages value for {item_folder} missing')
+
+        self.write_xml_file(
+            item_folder, mapping,
+            f'metadata_{schema}.xml',
+            schema=schema)
+
+    def create_meta_file(self, item_folder, data) -> None:
+        filename = 'dublin_core.xml'
+        dcl = []
+        lang = self.locale2isolang(data.get('locale'))
+
+        # dc.title, dc.title.translated
+        for locale, title in data['fullTitle'].items():
+            if title:
+                if locale == 'de_DE':
+                    lng = self.locale2isolang(locale)
+                    dcl.append(
+                        ('title', 'none', f' language="{lng}"', title)
+                        )
+                if locale == 'en_US':
+                    lng = self.locale2isolang(locale)
+                    dcl.append(
+                        ('title', 'translated', f' language="{lng}"', title)
+                        )
+
+        # dc.date.available
+        date_ = data.get('datePublished')
+        dcl.append(('date', 'available', '', date_), )
+
+        # dc.contributor.author
         authors = data.get('authorsString')
         dcl.append(('contributor', 'author', '', authors), )
 
-        date_ = data.get('datePublished')
-        dcl.append(('date', 'issued', '', date_), )
-        isolang = self.locale2isolang(data.get('locale'))
-        dcl.append(('language', 'iso', '', isolang), )
-        galleys = data.get('galleys')
+        # dc.language.iso
+        # dcl.append(('language', 'iso', '', isolang), )
 
+        # dc.description.abstract
+        galleys = data.get('galleys')
         for galley in galleys:
             file_ = galley.get('file')
             for locale, desc in file_.get('description').items():
@@ -220,13 +255,11 @@ class ExportSAF:
 
             dcl.append(('type', 'none', '', file_.get('mimetype')), )
 
-        self.write_xml_file(folder, dcl, 'dublin_core.xml')
+        self.write_xml_file(item_folder, dcl, filename)
 
     @staticmethod
-    def get_filename_from_cd(cd):
-        """
-        Get filename from content-disposition
-        """
+    def get_filename_from_cd(cd) -> str:
+        """Get filename from content-disposition"""
         if not cd:
             return None
         fname = re.findall('filename=(.+)', cd)
@@ -250,12 +283,12 @@ class ExportSAF:
 
             filename = (filedata.get('name')[locale]).replace(' ', '')
             if filename == '':
-                logging.error(f'missing filename for locale:{locale}')
+                logger.error(f'missing filename for locale:{locale}')
                 for _loc, name in filedata.get('name').items():
                     if len(name):
                         filename = name
-                        logging.info(
-                            f'use filename for locale:{_loc} instead: "{name}"')
+                        logger.info(
+                            f'use filename for locale:{_loc} instead:"{name}"')
                         break
                 else:
                     filename = 'missing_filname'
@@ -275,6 +308,7 @@ class ExportSAF:
                 status = submission.data['status']
                 if status != 3:  # 3 --> published
                     continue
+                
                 publ = submission.data['publications']
                 assert len(publ) == 1
                 publ = publ[0]
@@ -284,13 +318,21 @@ class ExportSAF:
 
                 self.create_meta_file(item_folder, publ)
 
-                schema = 'local'
-                self.write_xml_file(
-                    item_folder, [],
-                    f'metadata_{schema}.xml',
-                    schema="local")
+                # write schema files
+                schemas = ['local', ]
+                for schema in schemas:
+                    method = f'write_{schema}_file'
+                    try: 
+                        getattr(self, method)(item_folder, publ)
+                    except AttributeError as err:
+                        raise NotImplementedError(err)
+                        logger.error(
+                            f'method for schema "{method}" not found {err}')
 
+                # write collections file
                 self.write_collections_file(item_folder, self.collection)
+
+                # write contens file
                 filenames = self.download_galley(
                     journal_path, item_folder, publ)
                 self.write_contens_file(item_folder, filenames)
@@ -299,16 +341,20 @@ class ExportSAF:
         export_pth = Path(self.export_path)
         journals = [d for d in export_pth.iterdir() if d.is_dir()]
         for journal in journals:
-            logging.info(f'zip folder at {journal}')
-            zipfile = shutil.make_archive(journal, 'zip', journal)
-            if Path(zipfile).is_file():
-                shutil.rmtree(journal)
+            items = [i for i in journal.iterdir() if i.is_dir()]
+            for item in items:
+                logger.info(f'zip folder at {item}')
+                name = f'{journal.name}_{item.name}'
+                zipfile = shutil.make_archive(export_pth / name, 'zip', item)
+                if Path(zipfile).is_file():
+                    shutil.rmtree(item)
+            shutil.rmtree(journal)         
 
 
 def main():
     jp = JournalPoll()
     jp.request_contexts()
-    jp.extract_jounales(5)
+    jp.extract_jounales(2)
     jp.request_submissions()
 
     saf = ExportSAF(jp.journals)
