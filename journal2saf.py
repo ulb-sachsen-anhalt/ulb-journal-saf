@@ -4,6 +4,7 @@ import re
 import logging
 import argparse
 import shutil
+import mimetypes
 import requests
 import warnings
 import pycountry
@@ -20,12 +21,13 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
 logger = logging.getLogger(__file__)
 
+STATUS_PUBLISHED = 3
 CP = ConfigParser()
 CP.read("conf/config.ini")
 
 
 class Journal():
-    """This class is going to store single journal objects"""
+    """This class stores single journal objects"""
 
     def __init__(self, data):
         super().__init__()
@@ -38,34 +40,42 @@ class Journal():
 
 
 class Submission:
-    """This class is going to store submission objects"""
+    """This class stores submission objects"""
 
     def __init__(self, data, parent):
         self._href = data['_href']
         self.parent = parent
         self.data = data
+        self.id = data['id']
         self.publications = []
+        self.status = data['status']
 
 
 class Publication:
-    """This class is going to store publication objects"""
+    """This class stores publication objects"""
 
     def __init__(self, data, parent):
         self._href = data['_href']
         self.parent = parent
         self.data = data
         self.galleys = []
+        self.issue_id = data['issueId']
+        self.issue = {}
 
 
 class Galley:
-    """This class is going to store single galley objects"""
+    """This class stores single galley objects"""
 
     def __init__(self, data, parent):
-        # https://publicdev.bibliothek.uni-halle.de/hercynia/api/v1/submissions
         self.parent = parent
-        self.href = data['file']['_href']
-        self.url = data['file']['url']
         self.approved = data['isApproved']
+        file_ = data['file']
+        self.id_ = ['id']
+        self.submission_id = file_['submissionId']
+        self.href = file_['_href']
+        self.url = file_['url']
+        self.mimetype = file_['mimetype']
+        self.submission_file_id = data['submissionFileId']
 
 
 class JournalPoll():
@@ -82,61 +92,113 @@ class JournalPoll():
         g = CP['general']
         self.endpoint_contexts = g['endpoint_contexts']
         self.endpoint_submissions = g['endpoint_submissions']
+        self.endpoint_issue = g['endpoint_issue']
         self.journal_server = f"{g['journal_server']}/"
-        self.token = f"?apiToken={g['api_token']}"
+        self.token = f"apiToken={g['api_token']}"
 
     def _server_request(self, query) -> dict:
         # no need to verify, 'cause we trust the server
+        if '?' in query:
+            query += f'&{self.token}'
+        else:
+            query += f'?{self.token}'
         result = requests.get(query, verify=False)
         result_dct = result.json()
         if 'error' in result_dct.keys():
+            logger.error(
+                f"server reequest failed due to: {result_dct}")
             raise ValueError(result_dct)
         return result_dct
 
-    def server_contexts(self) -> str:
+    def rest_call_contexts(self) -> str:
         rest_call = ''.join([
             self.journal_server,
-            self.endpoint_contexts,
-            self.token])
+            self.endpoint_contexts])
         logger.info(
-            f"build contexts REST call:"
-            f"{rest_call[:-len(self.token)+10]}XXX")
+            f"build contexts REST call: {rest_call}")
         return rest_call
 
-    def server_submissions(self, jounal_name) -> str:
+    def rest_call_submissions(self, jounal_name,
+                              status=STATUS_PUBLISHED) -> str:
         rest_call = ''.join([
             self.journal_server,
             jounal_name,
             self.endpoint_submissions,
-            self.token])
+            f'?status={status}'])
         logger.debug(
-            "build submissions REST call: "
-            f"{rest_call[:-len(self.token)+10]}XXX")
+            "build submissions REST call: {rest_call}")
         return rest_call
 
-    def request_contexts(self) -> None:
-        query_contexts = self.server_contexts()
+    def rest_call_publications(self, href):
+        rest_call = href
+        logger.debug(
+            "build publications REST call: {rest_call}")
+        return rest_call
+
+    def rest_call_issue(self, jounal_name, issue_id):
+        rest_call = ''.join([
+            self.journal_server,
+            jounal_name,
+            self.endpoint_issue,
+            f'/{issue_id}'])
+        logger.debug(
+            "build issue REST call: {rest_call}")
+        return rest_call
+
+    def _request_contexts(self) -> None:
+        query_contexts = self.rest_call_contexts()
         self.journals_dict = self._server_request(query_contexts)
 
-    def extract_jounales(self, max=-1) -> None:
-        data = self.journals_dict
-        if 'items' in data.keys():
-            logger.info(f"{len(data['items'])} journals found")
-            for data in data['items'][:max]:
+    def _request_submission(self, journal_name) -> dict:
+        query_submission = self.rest_call_submissions(journal_name)
+        submission = self._server_request(query_submission)
+        logger.info(f"receive {len(submission['items'])} "
+                    f"submission items for '{journal_name}'")
+        items = [item for item in submission['items']]
+        return items
+
+    def _request_issue(self, journal_name, publication) -> None:
+        issue_id = publication.issue_id
+        query_issue = self.rest_call_issue(journal_name, issue_id)
+        publication.issue = self._server_request(query_issue)
+
+    def serialise_journals(self, start=0, end=-1) -> None:
+        journales = self.journals_dict
+        if 'items' in journales.keys():
+            logger.info(f"{len(journales['items'])} journals found")
+            for data in journales['items'][start:end]:
                 journal_obj = Journal(data)
                 self.journals.append(journal_obj)
 
-    def request_submissions(self) -> None:
+    def serialise_submissions(self) -> None:
         for journal in self.journals:
             journal_name = journal.url_path
-            s = self.server_submissions(journal_name)
-            result = self._server_request(s)
-            logger.info(
-                f"request {len(result['items'])} "
-                f"submissions for '{journal_name}'")
-            for submission in result['items']:
-                subm_obj = Submission(submission, self)
+            submission_items = self._request_submission(journal_name)
+            for item in submission_items:
+                if item['status'] != STATUS_PUBLISHED:
+                    raise ValueError(
+                        f"this item is *not* published yet! {item['_href']}")
+                subm_obj = Submission(item, self)
                 journal.submissions.append(subm_obj)
+                for publication in item.get('publications'):
+                    p = self.rest_call_publications(publication.get('_href'))
+                    publication_result = self._server_request(p)
+                    pub_obj = Publication(publication_result, item)
+                    subm_obj.publications.append(pub_obj)
+                    self._request_issue(journal_name, pub_obj)
+
+    def extract_galleys(self) -> None:
+        s = p = g = 0
+        for j, journal in enumerate(self.journals, start=1):
+            for s, subm in enumerate(journal.submissions, start=1):
+                for p, publ in enumerate(subm.data['publications'], start=1):
+                    for g, galley in enumerate(publ['galleys'], start=1):
+                        galley_obj = Galley(galley, self)
+                        journal.galleys.append(galley_obj)
+
+        logger.info(
+            f"proccess {j} journals, {s} submissions, "
+            f"{p} publication {g} galleys")
 
 
 class ExportSAF:
@@ -153,6 +215,7 @@ class ExportSAF:
         self.collection = e['collection']
         self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
+        self.type = g['type']
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, name, schema=None) -> None:
@@ -190,14 +253,25 @@ class ExportSAF:
         with open(pth, 'w') as fh:
             fh.write(collection)
 
-    def write_local_file(self, item_folder, data):
+    def write_local_file(self, item_folder, submission):
         schema = 'local'
         mapping = []
+        publications = submission.publications
+        assert len(publications) == 1
+        publication = publications[0]
+        # data = publication.data.get('')
+        publications = submission.data['publications']
+        data = publications[0]
         # local.OJSinternalid
-        id_ = data.get('id')
-
+        # id_ = data.get('id')
         # local.bibliographicCitation.page<{start,end}>
-        ('OJSinternalid', 'none', '', id_),
+        # ('OJSinternalid', 'none', '', id_),
+
+        issue = publication.issue
+        identification = (issue.get('identification'))  # e.g.: Bd. 20 (2021)
+        mapping.append(
+            ('bibliographicCitation', 'volume', '', identification),
+        )
         try:
             start, end = data.get('pages').split('-')
             mapping.extend([
@@ -212,13 +286,17 @@ class ExportSAF:
             f'metadata_{schema}.xml',
             schema=schema)
 
-    def create_meta_file(self, item_folder, data) -> None:
+    def create_meta_file(self, item_folder, submission) -> None:
+        publications = submission.publications
+        publication = publications[0]
+
         filename = 'dublin_core.xml'
         dcl = []
-        lang = self.locale2isolang(data.get('locale'))
+
+        lang = self.locale2isolang(publication.data.get('locale'))
 
         # dc.title, dc.title.translated
-        for locale, title in data['fullTitle'].items():
+        for locale, title in publication.data.get('fullTitle').items():
             if title:
                 if locale == 'de_DE':
                     lng = self.locale2isolang(locale)
@@ -232,18 +310,19 @@ class ExportSAF:
                         )
 
         # dc.date.available
-        date_ = data.get('datePublished')
+        date_ = publication.data.get('datePublished')
         dcl.append(('date', 'available', '', date_), )
 
         # dc.contributor.author
-        authors = data.get('authorsString')
-        dcl.append(('contributor', 'author', '', authors), )
+        authors = publication.data.get('authorsString')
+        for author in authors.split(','):
+            dcl.append(('contributor', 'author', '', author.strip()), )
 
         # dc.language.iso
         # dcl.append(('language', 'iso', '', isolang), )
 
         # dc.description.abstract
-        galleys = data.get('galleys')
+        galleys = publication.data.get('galleys')
         for galley in galleys:
             file_ = galley.get('file')
             for locale, desc in file_.get('description').items():
@@ -253,7 +332,7 @@ class ExportSAF:
                         ('description', 'abstract',
                          f' language="{lang}"', desc), )
 
-            dcl.append(('type', 'none', '', file_.get('mimetype')), )
+            dcl.append(('type', 'none', '', self.type), )
 
         self.write_xml_file(item_folder, dcl, filename)
 
@@ -267,33 +346,28 @@ class ExportSAF:
             return None
         return fname[0]
 
-    def download_galley(self, journal, work_dir, data) -> list:
-        galleys = data.get('galleys')
+    def download_galley(self, journal, work_dir, submission) -> list:
+        publications = submission.publications
+        publication = publications[0]
+        galleys = publication.galleys
+        journal_url = journal.url
+        galleys = journal.galleys
         filenames = []
         for galley in galleys:
-            galley_id = galley.get('id')
-            filedata = galley.get('file')
-            submission_id = filedata.get('submissionId')
-            submission_file_id = galley.get('submissionFileId')
-
-            locale = galley.get('locale', None)
+            galley_id = galley.id_
+            submission_id = galley.submission_id
+            mime_type = galley.mimetype
+            extension = mimetypes.guess_extension(mime_type)
+            submission_file_id = galley.submission_file_id
             url = "{}/article/download/{}/{}/{}".format(
-                journal, submission_id, galley_id, submission_file_id)
+                journal_url, submission_id, galley_id, submission_file_id)
             response = requests.get(url, verify=False)
 
-            filename = (filedata.get('name')[locale]).replace(' ', '')
-            if filename == '':
-                logger.error(f'missing filename for locale:{locale}')
-                for _loc, name in filedata.get('name').items():
-                    if len(name):
-                        filename = name
-                        logger.info(
-                            f'use filename for locale:{_loc} instead:"{name}"')
-                        break
-                else:
-                    filename = 'missing_filname'
+            filename = '{}_{}_{}{}'.format(
+                journal.url_path, submission_id, submission_file_id, extension)
 
             export_path = work_dir / filename
+
             with open(export_path, 'wb') as fh:
                 for chunk in response.iter_content(chunk_size=16*1024):
                     fh.write(chunk)
@@ -303,27 +377,20 @@ class ExportSAF:
     def export(self) -> None:
         for journal in self.journals:
             journal_name = journal.url_path
-            journal_path = journal.url
-            for num, submission in enumerate(journal.submissions, start=1):
-                status = submission.data['status']
-                if status != 3:  # 3 --> published
-                    continue
-                
-                publ = submission.data['publications']
-                assert len(publ) == 1
-                publ = publ[0]
+            for submission in journal.submissions:
 
                 item_folder = Path(self.export_path)\
-                    .joinpath(journal_name, f'item_{num:03}')
+                    .joinpath(journal_name,
+                              f'submission_{submission.id}')
 
-                self.create_meta_file(item_folder, publ)
+                self.create_meta_file(item_folder, submission)
 
                 # write schema files
                 schemas = ['local', ]
                 for schema in schemas:
                     method = f'write_{schema}_file'
-                    try: 
-                        getattr(self, method)(item_folder, publ)
+                    try:
+                        getattr(self, method)(item_folder, submission)
                     except AttributeError as err:
                         raise NotImplementedError(err)
                         logger.error(
@@ -334,7 +401,7 @@ class ExportSAF:
 
                 # write contens file
                 filenames = self.download_galley(
-                    journal_path, item_folder, publ)
+                    journal, item_folder, submission)
                 self.write_contens_file(item_folder, filenames)
 
     def write_zips(self):
@@ -348,14 +415,15 @@ class ExportSAF:
                 zipfile = shutil.make_archive(export_pth / name, 'zip', item)
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
-            shutil.rmtree(journal)         
+            shutil.rmtree(journal)
 
 
 def main():
     jp = JournalPoll()
-    jp.request_contexts()
-    jp.extract_jounales(2)
-    jp.request_submissions()
+    jp._request_contexts()
+    jp.serialise_journals(2, 3)
+    jp.serialise_submissions()
+    jp.extract_galleys()
 
     saf = ExportSAF(jp.journals)
     saf.export()
