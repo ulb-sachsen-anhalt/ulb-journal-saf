@@ -13,17 +13,19 @@ from configparser import ConfigParser
 
 warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
-__all__ = ['JournalPoll', 'ExportSAF']
-
+###############################################################
+STATUS_PUBLISHED = 3
+CONFIG = "conf/config.ini"
+###############################################################
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
-logger = logging.getLogger(__file__)
 
-STATUS_PUBLISHED = 3
+logger = logging.getLogger(__file__.split('/')[-1])
+
 CP = ConfigParser()
-CP.read("conf/config.ini")
+CP.read(CONFIG)
 
 
 class Journal():
@@ -31,12 +33,10 @@ class Journal():
 
     def __init__(self, data):
         super().__init__()
-        # https://public.bibliothek.uni-halle.de/hercynia/api/v1/contexts/6
         self.url_path = data['urlPath']
         self.url = data['url']
         self.submissions = []
         self.publications = []
-        self.galleys = []
 
 
 class Submission:
@@ -49,6 +49,7 @@ class Submission:
         self.id = data['id']
         self.publications = []
         self.status = data['status']
+        #self.galleys = []
 
 
 class Publication:
@@ -61,6 +62,7 @@ class Publication:
         self.galleys = []
         self.issue_id = data['issueId']
         self.issue = {}
+        self.galleys = []
 
 
 class Galley:
@@ -70,12 +72,15 @@ class Galley:
         self.parent = parent
         self.approved = data['isApproved']
         file_ = data['file']
-        self.id_ = ['id']
+
+        self.gallery_id = data['id']
         self.submission_id = file_['submissionId']
+        self.submission_file_id = data['submissionFileId']
+
         self.href = file_['_href']
         self.url = file_['url']
+        self.description = file_['description']
         self.mimetype = file_['mimetype']
-        self.submission_file_id = data['submissionFileId']
 
 
 class JournalPoll():
@@ -191,10 +196,10 @@ class JournalPoll():
         s = p = g = 0
         for j, journal in enumerate(self.journals, start=1):
             for s, subm in enumerate(journal.submissions, start=1):
-                for p, publ in enumerate(subm.data['publications'], start=1):
-                    for g, galley in enumerate(publ['galleys'], start=1):
+                for p, publ in enumerate(subm.publications, start=1):
+                    for g, galley in enumerate(publ.data['galleys'], start=1):
                         galley_obj = Galley(galley, self)
-                        journal.galleys.append(galley_obj)
+                        publ.galleys.append(galley_obj)
 
         logger.info(
             f"proccess {j} journals, {s} submissions, "
@@ -279,7 +284,7 @@ class ExportSAF:
                 ('bibliographicCitation', 'pageend', '', end)]
             )
         except ValueError:
-            logger.info(f'pages value for {item_folder} missing')
+            logger.info(f"'pages' property for {item_folder} missing")
 
         self.write_xml_file(
             item_folder, mapping,
@@ -322,10 +327,9 @@ class ExportSAF:
         # dcl.append(('language', 'iso', '', isolang), )
 
         # dc.description.abstract
-        galleys = publication.data.get('galleys')
+        galleys = publication.galleys
         for galley in galleys:
-            file_ = galley.get('file')
-            for locale, desc in file_.get('description').items():
+            for locale, desc in galley.description.items():
                 lang = self.locale2isolang(locale)
                 if desc:
                     dcl.append(
@@ -349,12 +353,12 @@ class ExportSAF:
     def download_galley(self, journal, work_dir, submission) -> list:
         publications = submission.publications
         publication = publications[0]
-        galleys = publication.galleys
         journal_url = journal.url
-        galleys = journal.galleys
+        galleys = publication.galleys
+
         filenames = []
         for galley in galleys:
-            galley_id = galley.id_
+            galley_id = galley.gallery_id
             submission_id = galley.submission_id
             mime_type = galley.mimetype
             extension = mimetypes.guess_extension(mime_type)
@@ -362,7 +366,10 @@ class ExportSAF:
             url = "{}/article/download/{}/{}/{}".format(
                 journal_url, submission_id, galley_id, submission_file_id)
             response = requests.get(url, verify=False)
-
+            status_code = response.status_code
+            if status_code != 200:
+                logger.error(f'error download file code:{status_code} {url}')
+                continue
             filename = '{}_{}_{}{}'.format(
                 journal.url_path, submission_id, submission_file_id, extension)
 
@@ -371,6 +378,9 @@ class ExportSAF:
             with open(export_path, 'wb') as fh:
                 for chunk in response.iter_content(chunk_size=16*1024):
                     fh.write(chunk)
+                logger.info(
+                    f'download file at {url} '
+                    f'size: {Path(export_path).stat().st_size >> 20} Mb')
                 filenames.append(filename)
         return filenames
 
@@ -392,9 +402,9 @@ class ExportSAF:
                     try:
                         getattr(self, method)(item_folder, submission)
                     except AttributeError as err:
-                        raise NotImplementedError(err)
                         logger.error(
                             f'method for schema "{method}" not found {err}')
+                        raise NotImplementedError(err)
 
                 # write collections file
                 self.write_collections_file(item_folder, self.collection)
@@ -407,21 +417,27 @@ class ExportSAF:
     def write_zips(self):
         export_pth = Path(self.export_path)
         journals = [d for d in export_pth.iterdir() if d.is_dir()]
+        size_abs = 0
         for journal in journals:
             items = [i for i in journal.iterdir() if i.is_dir()]
             for item in items:
                 logger.info(f'zip folder at {item}')
                 name = f'{journal.name}_{item.name}'
                 zipfile = shutil.make_archive(export_pth / name, 'zip', item)
+                zipsize = Path(zipfile).stat().st_size
+                size_abs += zipsize
+                logger.info(f'write zip file {name} '
+                            f'with {zipsize >> 20} Mb')
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
             shutil.rmtree(journal)
+        logger.info(f'finally wrote {size_abs >> 20} Mb, done...')    
 
 
 def main():
     jp = JournalPoll()
     jp._request_contexts()
-    jp.serialise_journals(2, 3)
+    jp.serialise_journals(1, 3)
     jp.serialise_submissions()
     jp.extract_galleys()
 
