@@ -1,10 +1,10 @@
 # Harvesting OJS/OMP Journals and Books
 
 
-Das Script _journal2saf.py_ ruft von einem, im Konfigurationsfile angegebenen Journalserver, alle relevanten Daten von bereits pulizierten Journalen/Büchern ab.
+Das Script _journal2saf.py_ ruft von einem, im Konfigurationsfile angegebenen Journalserver, alle relevanten Daten, von bereits pulizierten Journalen/Büchern ab.
 
 
-Mit den Daten werden [SAF Dateien](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt, die von einem D_Space Server regelmäßig importiert werden.
+Aus diesen Daten werden [SAF Dateien](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt, die von einem D_Space Server regelmäßig importiert werden.
 
 ## Ziel:
 
@@ -17,4 +17,4 @@ Hat der D-Space Server die Daten importiert, sollte er einen [DOI](https://de.wi
 
 Der DOI soll anschließend im Journalserver via API eingetragen werden.
 
-Das Script soll viá crontab regelmäßig den/die Journalserver abfragen, um aktuell Veröffentlichungen im D-Space anzuzeigen und mit einem DOI zu versehen.
+Das Script soll später viá cronjob regelmäßig den/die Journalserver abfragen, um aktuell Veröffentlichungen im D-Space anzuzeigen und mit einem DOI zu versehen.
