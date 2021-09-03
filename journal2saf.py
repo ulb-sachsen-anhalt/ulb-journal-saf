@@ -63,6 +63,7 @@ class Publication:
         self.data = data
         self.galleys = []
         self.issue_id = data['issueId']
+        self.pages = data['pages']
         self.issue = {}
         self.galleys = []
 
@@ -263,51 +264,45 @@ class ExportSAF:
 
     def write_local_file(self, item_folder, submission):
         schema = 'local'
-        mapping = []
+        dcl = []
         publications = submission.publications
         assert len(publications) == 1
-        publication = publications[0]
-        # data = publication.data.get('')
         publications = submission.data['publications']
-        data = publications[0]
-        # local.OJSinternalid
-        # id_ = data.get('id')
-        # local.bibliographicCitation.page<{start,end}>
-        # ('OJSinternalid', 'none', '', id_),
 
-        issue = publication.issue
-        # identification = (issue.get('identification'))  # e.g.: Bd. 20 (2021)
-        volume = issue.get('volume')
-        number = issue.get('number')
+        dcl.append(('openaccess', 'none', '', 'true'), )
+        self.write_xml_file(
+            item_folder, dcl,
+            f'metadata_{schema}.xml',
+            schema=schema)
+
+    def create_meta_file(self, item_folder, submission) -> None:
+        filename = 'dublin_core.xml'
+
+        publications = submission.publications
+        publication = publications[0]
         locale = submission.locale
-        title = submission.parent.name[locale]
-        description = submission.parent.description[locale]
-        mapping.append(('bibliographicCitation', 'volume', '', volume), )
-        mapping.append(('bibliographicCitation', 'number', '', number), )
-        mapping.append(('bibliographicCitation', 'journaltitle', '', title), )
-        mapping.append((
-            'description', 'abstract', '', f'<![CDATA[{description}]]>'), )
+        issue = publication.issue
+        dcl = []
+        volume = issue.get('volume')
+        dcl.append(('bibliographicCitation', 'volume', '', volume), )
 
+        number = issue.get('number')
+        dcl.append(('bibliographicCitation', 'number', '', number), )
+
+        title = submission.parent.name[locale]
+        dcl.append(('bibliographicCitation', 'journaltitle', '', title), )
+
+        description = submission.parent.description[locale]
+        dcl.append((
+            'description', 'abstract', '', f'<![CDATA[{description}]]>'), )
         try:
-            start, end = data.get('pages').split('-')
-            mapping.extend([
+            start, end = publication.pages.split('-')
+            dcl.extend([
                 ('bibliographicCitation', 'pagestart', '', start),
                 ('bibliographicCitation', 'pageend', '', end)]
             )
         except ValueError:
             logger.info(f"'pages' property for {item_folder} missing")
-
-        self.write_xml_file(
-            item_folder, mapping,
-            f'metadata_{schema}.xml',
-            schema=schema)
-
-    def create_meta_file(self, item_folder, submission) -> None:
-        publications = submission.publications
-        publication = publications[0]
-
-        filename = 'dublin_core.xml'
-        dcl = []
 
         lang = self.locale2isolang(publication.data.get('locale'))
 
@@ -325,16 +320,12 @@ class ExportSAF:
                         ('title', 'translated', f' language="{lng}"', title)
                         )
 
-        # dc.date.available
         date_ = publication.data.get('datePublished')
         dcl.append(('date', 'available', '', date_), )
 
-        # dc.contributor.author
         authors = publication.data.get('authorsString')
         for author in authors.split(','):
             dcl.append(('contributor', 'author', '', author.strip()), )
-
-
 
         # dc.language.iso
         # dcl.append(('language', 'iso', '', isolang), )
