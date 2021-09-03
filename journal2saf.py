@@ -33,10 +33,12 @@ class Journal():
 
     def __init__(self, data):
         super().__init__()
+        self.name = data['name']
         self.url_path = data['urlPath']
         self.url = data['url']
         self.submissions = []
         self.publications = []
+        self.description = data['description']
 
 
 class Submission:
@@ -49,7 +51,7 @@ class Submission:
         self.id = data['id']
         self.publications = []
         self.status = data['status']
-        #self.galleys = []
+        self.locale = data['locale']
 
 
 class Publication:
@@ -165,6 +167,7 @@ class JournalPoll():
     def _request_issue(self, journal_name, publication) -> None:
         issue_id = publication.issue_id
         query_issue = self.rest_call_issue(journal_name, issue_id)
+        logger.info(f'request issue: {query_issue}')
         publication.issue = self._server_request(query_issue)
 
     def serialise_journals(self, start=0, end=-1) -> None:
@@ -183,7 +186,7 @@ class JournalPoll():
                 if item['status'] != STATUS_PUBLISHED:
                     raise ValueError(
                         f"this item is *not* published yet! {item['_href']}")
-                subm_obj = Submission(item, self)
+                subm_obj = Submission(item, journal)
                 journal.submissions.append(subm_obj)
                 for publication in item.get('publications'):
                     p = self.rest_call_publications(publication.get('_href'))
@@ -245,8 +248,8 @@ class ExportSAF:
         return isolang
 
     @staticmethod
-    def write_contens_file(work_dir, file_list) -> None:
-        filename = 'contens'
+    def write_contents_file(work_dir, file_list) -> None:
+        filename = 'contents'
         pth = work_dir / filename
         with open(pth, 'w') as fh:
             fh.writelines("{}\n".format(line) for line in file_list)
@@ -273,10 +276,18 @@ class ExportSAF:
         # ('OJSinternalid', 'none', '', id_),
 
         issue = publication.issue
-        identification = (issue.get('identification'))  # e.g.: Bd. 20 (2021)
-        mapping.append(
-            ('bibliographicCitation', 'volume', '', identification),
-        )
+        # identification = (issue.get('identification'))  # e.g.: Bd. 20 (2021)
+        volume = issue.get('volume')
+        number = issue.get('number')
+        locale = submission.locale
+        title = submission.parent.name[locale]
+        description = submission.parent.description[locale]
+        mapping.append(('bibliographicCitation', 'volume', '', volume), )
+        mapping.append(('bibliographicCitation', 'number', '', number), )
+        mapping.append(('bibliographicCitation', 'journaltitle', '', title), )
+        mapping.append((
+            'description', 'abstract', '', f'<![CDATA[{description}]]>'), )
+
         try:
             start, end = data.get('pages').split('-')
             mapping.extend([
@@ -322,6 +333,8 @@ class ExportSAF:
         authors = publication.data.get('authorsString')
         for author in authors.split(','):
             dcl.append(('contributor', 'author', '', author.strip()), )
+
+
 
         # dc.language.iso
         # dcl.append(('language', 'iso', '', isolang), )
@@ -409,10 +422,10 @@ class ExportSAF:
                 # write collections file
                 self.write_collections_file(item_folder, self.collection)
 
-                # write contens file
+                # write contents file
                 filenames = self.download_galley(
                     journal, item_folder, submission)
-                self.write_contens_file(item_folder, filenames)
+                self.write_contents_file(item_folder, filenames)
 
     def write_zips(self):
         export_pth = Path(self.export_path)
@@ -426,12 +439,12 @@ class ExportSAF:
                 zipfile = shutil.make_archive(export_pth / name, 'zip', item)
                 zipsize = Path(zipfile).stat().st_size
                 size_abs += zipsize
-                logger.info(f'write zip file {name} '
+                logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
             shutil.rmtree(journal)
-        logger.info(f'finally wrote {size_abs >> 20} Mb, done...')    
+        logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
 def main():
