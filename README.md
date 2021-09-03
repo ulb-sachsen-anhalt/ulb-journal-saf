@@ -18,3 +18,9 @@ Hat der D-Space Server die Daten importiert, sollte er einen [DOI](https://de.wi
 Der DOI soll anschließend im Journalserver via API eingetragen werden.
 
 Das Script soll später viá cronjob regelmäßig den/die Journalserver abfragen, um aktuell Veröffentlichungen im D-Space anzuzeigen und mit einem DOI zu versehen.
+
+Um das Dantenbankfeld pub-id::doi anzulegen, ist es notwendig das DOI Plugin zu aktivieren!
+
+Hier eine Bspl. Request (PUT) um die DOI umzuschreiben:
+
+curl -k -X PUT -H "Content-Type: application/json" -d '{"pub-id::doi":"123"}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101?apiToken=xyz-usw...
