@@ -24,3 +24,6 @@ Um das Dantenbankfeld pub-id::doi anzulegen, ist es notwendig das DOI Plugin zu 
 Hier eine Bspl. Request (PUT) um die DOI umzuschreiben:
 
 curl -k -X PUT -H "Content-Type: application/json" -d '{"pub-id::doi":"123"}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101?apiToken=xyz-usw...
+
+Resultat:
+https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101
