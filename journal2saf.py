@@ -32,26 +32,32 @@ class Journal():
     """This class stores single journal objects"""
 
     def __init__(self, data):
-        super().__init__()
         self.name = data['name']
         self.url_path = data['urlPath']
         self.url = data['url']
-        self.submissions = []
+        self.issues = []
+        self.submissions = []  # TODO:  kann weg?
         self.publications = []
         self.description = data['description']
 
 
-class Submission:
-    """This class stores submission objects"""
+class Issue():
+    """This class stores single issue objects"""
 
     def __init__(self, data, parent):
-        self._href = data['_href']
-        self.parent = parent
-        self.data = data
-        self.id = data['id']
-        self.publications = []
-        self.status = data['status']
-        self.locale = data['locale']
+        self.parent = parent   # journal object
+        self.issue_id = data['id']
+        self.date_published = data['datePublished']
+        self.articles = data['articles']
+        for article in data['articles']:    # TODO: checken
+            self.locale = article['locale']
+        self.volume = data['volume']
+        self.number = data['number']
+        self.year = data['year']
+        for section in data['sections']:
+            self.section = section
+        self.publications = data['articles'][0]['publications']
+        print(self.issue_id)
 
 
 class Publication:
@@ -143,7 +149,16 @@ class JournalPoll():
             "build publications REST call: {rest_call}")
         return rest_call
 
-    def rest_call_issue(self, jounal_name, issue_id):
+    def rest_call_issues(self, jounal_name):
+        rest_call = ''.join([
+            self.journal_server,
+            jounal_name,
+            self.endpoint_issue])
+        logger.debug(
+            "build issues REST call: {rest_call}")
+        return rest_call
+
+    def rest_call_issue(self, jounal_name, issue_id):  # todo dann kann weg
         rest_call = ''.join([
             self.journal_server,
             jounal_name,
@@ -165,11 +180,19 @@ class JournalPoll():
         items = [item for item in submission['items']]
         return items
 
-    def _request_issue(self, journal_name, publication) -> None:
-        issue_id = publication.issue_id
-        query_issue = self.rest_call_issue(journal_name, issue_id)
-        logger.info(f'request issue: {query_issue}')
-        publication.issue = self._server_request(query_issue)
+    def _request_issues(self) -> None:
+        for journal in self.journals:
+            query_issues = self.rest_call_issues(journal.url_path)
+            logger.info(f'request all issues: {query_issues}')
+            issues = self._server_request(query_issues)
+            for issue in issues['items']:
+                issue_data = issue
+                issue_query = self.rest_call_issue(
+                    journal.url_path, issue['id'])
+                issue_data.update(self._server_request(issue_query))
+                if len(issue_data['articles']) > 0:
+                    issue_ob = Issue(issue_data, journal)
+                    journal.issues.append(issue_ob)
 
     def serialise_journals(self, start=0, end=-1) -> None:
         journales = self.journals_dict
@@ -178,23 +201,6 @@ class JournalPoll():
             for data in journales['items'][start:end]:
                 journal_obj = Journal(data)
                 self.journals.append(journal_obj)
-
-    def serialise_submissions(self) -> None:
-        for journal in self.journals:
-            journal_name = journal.url_path
-            submission_items = self._request_submission(journal_name)
-            for item in submission_items:
-                if item['status'] != STATUS_PUBLISHED:
-                    raise ValueError(
-                        f"this item is *not* published yet! {item['_href']}")
-                subm_obj = Submission(item, journal)
-                journal.submissions.append(subm_obj)
-                for publication in item.get('publications'):
-                    p = self.rest_call_publications(publication.get('_href'))
-                    publication_result = self._server_request(p)
-                    pub_obj = Publication(publication_result, item)
-                    subm_obj.publications.append(pub_obj)
-                    self._request_issue(journal_name, pub_obj)
 
     def extract_galleys(self) -> None:
         s = p = g = 0
@@ -262,41 +268,14 @@ class ExportSAF:
         with open(pth, 'w') as fh:
             fh.write(collection)
 
-    def write_local_file(self, item_folder, submission):
+    def write_local_file(self, item_folder, issue) -> None:
         schema = 'local'
+        locale = issue.locale
+        publication = issue.publications[0]
         dcl = []
-        publications = submission.publications
-        assert len(publications) == 1
-        publications = submission.data['publications']
 
-        dcl.append(('openaccess', 'none', '', 'true'), )
-        self.write_xml_file(
-            item_folder, dcl,
-            f'metadata_{schema}.xml',
-            schema=schema)
-
-    def create_meta_file(self, item_folder, submission) -> None:
-        filename = 'dublin_core.xml'
-
-        publications = submission.publications
-        publication = publications[0]
-        locale = submission.locale
-        issue = publication.issue
-        dcl = []
-        volume = issue.get('volume')
-        dcl.append(('bibliographicCitation', 'volume', '', volume), )
-
-        number = issue.get('number')
-        dcl.append(('bibliographicCitation', 'number', '', number), )
-
-        title = submission.parent.name[locale]
-        dcl.append(('bibliographicCitation', 'journaltitle', '', title), )
-
-        description = submission.parent.description[locale]
-        dcl.append((
-            'description', 'abstract', '', f'<![CDATA[{description}]]>'), )
         try:
-            start, end = publication.pages.split('-')
+            start, end = publication['pages'].split('-')
             dcl.extend([
                 ('bibliographicCitation', 'pagestart', '', start),
                 ('bibliographicCitation', 'pageend', '', end)]
@@ -304,43 +283,81 @@ class ExportSAF:
         except ValueError:
             logger.info(f"'pages' property for {item_folder} missing")
 
-        lang = self.locale2isolang(publication.data.get('locale'))
+        volume = issue.volume
+        dcl.append(('bibliographicCitation', 'volume', '', volume), )
+
+        number = issue.number
+        dcl.append(('bibliographicCitation', 'number', '', number), )
+
+        jtitle = issue.parent.name[locale]
+        dcl.append(('bibliographicCitation', 'journaltitle', '', jtitle), )
+
+        dcl.append(('openaccess', 'none', '', 'true'), )
+        self.write_xml_file(
+            item_folder, dcl,
+            f'metadata_{schema}.xml',
+            schema=schema)
+
+    def create_meta_file(self, item_folder, issue) -> None:
+        filename = 'dublin_core.xml'
+
+        publication = issue.publications[0]
+        locale = issue.locale
+        # issue = publication.issue
+        lang = self.locale2isolang(publication.get('locale'))
+        dcl = []
+
+        year = issue.year
+        dcl.append(('date', 'issued', '', year), )
+
+        description = issue.parent.description[locale]
+        dcl.append((
+            'description', 'abstract', '', f'<![CDATA[{description}]]>'), )
 
         # dc.title, dc.title.translated
-        for locale, title in publication.data.get('fullTitle').items():
+        for locale_, title in publication['fullTitle'].items():
             if title:
-                if locale == 'de_DE':
-                    lng = self.locale2isolang(locale)
+                lng = self.locale2isolang(locale)
+                if locale_ == locale:
                     dcl.append(
-                        ('title', 'none', f' language="{lng}"', title)
-                        )
-                if locale == 'en_US':
-                    lng = self.locale2isolang(locale)
+                        ('title', 'none', f' language="{lng}"', title))
+                else:
                     dcl.append(
-                        ('title', 'translated', f' language="{lng}"', title)
-                        )
+                        ('title', 'translated', f' language="{lng}"', title))
 
-        date_ = publication.data.get('datePublished')
+        date_ = publication['datePublished']
         dcl.append(('date', 'available', '', date_), )
 
-        authors = publication.data.get('authorsString')
-        for author in authors.split(','):
-            dcl.append(('contributor', 'author', '', author.strip()), )
+        # dc.contributor.author
+        authors = publication['authorsString']
+        authors_short = publication['authorsStringShort']
+        all_authors = authors if len(authors) else authors_short
+        if len(all_authors):
+            for author in all_authors.split(','):
+                dcl.append(('contributor', 'author', '', author.strip()), )
 
         # dc.language.iso
-        # dcl.append(('language', 'iso', '', isolang), )
+        dcl.append(('language', 'iso', '', lang), )
+
+        # dc.type
+        dc_type = issue.section['title']
+        for k, v in dc_type.items():
+            if len(v):
+                dcl.append(('type', 'none', '', v.lower()), )
+                break
 
         # dc.description.abstract
-        galleys = publication.galleys
+        galleys = publication['galleys']
         for galley in galleys:
-            for locale, desc in galley.description.items():
+            for locale, desc in galley['file']['description'].items():
                 lang = self.locale2isolang(locale)
                 if desc:
                     dcl.append(
                         ('description', 'abstract',
                          f' language="{lang}"', desc), )
 
-            dcl.append(('type', 'none', '', self.type), )
+            # TODO: check what types are
+            # dcl.append(('type', 'none', '', self.type), )
 
         self.write_xml_file(item_folder, dcl, filename)
 
@@ -354,19 +371,19 @@ class ExportSAF:
             return None
         return fname[0]
 
-    def download_galley(self, journal, work_dir, submission) -> list:
-        publications = submission.publications
+    def download_galley(self, journal, work_dir, issue) -> list:
+        publications = issue.publications
         publication = publications[0]
         journal_url = journal.url
-        galleys = publication.galleys
+        galleys = publication['galleys']
 
         filenames = []
         for galley in galleys:
-            galley_id = galley.gallery_id
-            submission_id = galley.submission_id
-            mime_type = galley.mimetype
+            galley_id = galley['id']
+            mime_type = galley['file']['mimetype']
+            submission_id = galley['file']['submissionId']
             extension = mimetypes.guess_extension(mime_type)
-            submission_file_id = galley.submission_file_id
+            submission_file_id = galley['submissionFileId']
             url = "{}/article/download/{}/{}/{}".format(
                 journal_url, submission_id, galley_id, submission_file_id)
             response = requests.get(url, verify=False)
@@ -391,20 +408,20 @@ class ExportSAF:
     def export(self) -> None:
         for journal in self.journals:
             journal_name = journal.url_path
-            for submission in journal.submissions:
+            for num, issue in enumerate(journal.issues):
 
                 item_folder = Path(self.export_path)\
-                    .joinpath(journal_name,
-                              f'submission_{submission.id}')
+                    .joinpath(journal_name, f'item_{num:03d}',
+                              f'issue_{issue.issue_id}')
 
-                self.create_meta_file(item_folder, submission)
+                self.create_meta_file(item_folder, issue)
 
                 # write schema files
                 schemas = ['local', ]
                 for schema in schemas:
                     method = f'write_{schema}_file'
                     try:
-                        getattr(self, method)(item_folder, submission)
+                        getattr(self, method)(item_folder, issue)
                     except AttributeError as err:
                         logger.error(
                             f'method for schema "{method}" not found {err}')
@@ -415,7 +432,7 @@ class ExportSAF:
 
                 # write contents file
                 filenames = self.download_galley(
-                    journal, item_folder, submission)
+                    journal, item_folder, issue)
                 self.write_contents_file(item_folder, filenames)
 
     def write_zips(self):
@@ -427,22 +444,23 @@ class ExportSAF:
             for item in items:
                 logger.info(f'zip folder at {item}')
                 name = f'{journal.name}_{item.name}'
-                zipfile = shutil.make_archive(export_pth / name, 'zip', item)
+                zipfile = shutil.make_archive(
+                    export_pth / name, 'zip', item)
                 zipsize = Path(zipfile).stat().st_size
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                if Path(zipfile).is_file():
-                    shutil.rmtree(item)
-            shutil.rmtree(journal)
+                #if Path(zipfile).is_file():
+                #    shutil.rmtree(item)
+            #shutil.rmtree(journal)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
 def main():
     jp = JournalPoll()
     jp._request_contexts()
-    jp.serialise_journals(1, 3)
-    jp.serialise_submissions()
+    jp.serialise_journals(2, 3)
+    jp._request_issues()
     jp.extract_galleys()
 
     saf = ExportSAF(jp.journals)
