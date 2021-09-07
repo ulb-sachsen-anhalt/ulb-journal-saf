@@ -60,20 +60,6 @@ class Issue():
         print(self.issue_id)
 
 
-class Publication:
-    """This class stores publication objects"""
-
-    def __init__(self, data, parent):
-        self._href = data['_href']
-        self.parent = parent
-        self.data = data
-        self.galleys = []
-        self.issue_id = data['issueId']
-        self.pages = data['pages']
-        self.issue = {}
-        self.galleys = []
-
-
 class Galley:
     """This class stores single galley objects"""
 
@@ -106,7 +92,7 @@ class JournalPoll():
         g = CP['general']
         self.endpoint_contexts = g['endpoint_contexts']
         self.endpoint_submissions = g['endpoint_submissions']
-        self.endpoint_issue = g['endpoint_issue']
+        self.endpoint_issues = g['endpoint_issues']
         self.journal_server = f"{g['journal_server']}/"
         self.token = f"apiToken={g['api_token']}"
 
@@ -132,17 +118,6 @@ class JournalPoll():
             f"build contexts REST call: {rest_call}")
         return rest_call
 
-    def rest_call_submissions(self, jounal_name,
-                              status=STATUS_PUBLISHED) -> str:
-        rest_call = ''.join([
-            self.journal_server,
-            jounal_name,
-            self.endpoint_submissions,
-            f'?status={status}'])
-        logger.debug(
-            "build submissions REST call: {rest_call}")
-        return rest_call
-
     def rest_call_publications(self, href):
         rest_call = href
         logger.debug(
@@ -153,7 +128,7 @@ class JournalPoll():
         rest_call = ''.join([
             self.journal_server,
             jounal_name,
-            self.endpoint_issue])
+            self.endpoint_issues])
         logger.debug(
             "build issues REST call: {rest_call}")
         return rest_call
@@ -162,7 +137,7 @@ class JournalPoll():
         rest_call = ''.join([
             self.journal_server,
             jounal_name,
-            self.endpoint_issue,
+            self.endpoint_issues,
             f'/{issue_id}'])
         logger.debug(
             "build issue REST call: {rest_call}")
@@ -171,14 +146,6 @@ class JournalPoll():
     def _request_contexts(self) -> None:
         query_contexts = self.rest_call_contexts()
         self.journals_dict = self._server_request(query_contexts)
-
-    def _request_submission(self, journal_name) -> dict:
-        query_submission = self.rest_call_submissions(journal_name)
-        submission = self._server_request(query_submission)
-        logger.info(f"receive {len(submission['items'])} "
-                    f"submission items for '{journal_name}'")
-        items = [item for item in submission['items']]
-        return items
 
     def _request_issues(self) -> None:
         for journal in self.journals:
@@ -450,9 +417,9 @@ class ExportSAF:
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                #if Path(zipfile).is_file():
-                #    shutil.rmtree(item)
-            #shutil.rmtree(journal)
+                if Path(zipfile).is_file():
+                    shutil.rmtree(item)
+            shutil.rmtree(journal)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
