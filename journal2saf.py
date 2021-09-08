@@ -27,17 +27,25 @@ logger = logging.getLogger(__file__.split('/')[-1])
 CP = ConfigParser()
 CP.read(CONFIG)
 
+__all__ = ['Journal', 'Issue', 'JournalPoll', 'ExportSAF']
+
 
 class Journal():
     """This class stores single journal objects"""
 
     def __init__(self, data):
+        self._data = data
         self.name = data['name']
         self.url_path = data['urlPath']
         self.url = data['url']
-        self.issues = []
-        self.publications = []
         self.description = data['description']
+        self.issues = []
+
+    def get(self, attribute):
+        if attribute in self._data:
+            return self._data[attribute]
+        else:
+            logger.warning(f"{attribute} not in journal")
 
 
 class Issue():
@@ -47,8 +55,7 @@ class Issue():
         self.parent = parent   # journal object
         self.issue_id = data['id']
         self.date_published = data['datePublished']
-        self.articles = data['articles']
-        for article in data['articles']:    # TODO: checken
+        for article in data['articles']:
             self.locale = article['locale']
         self.volume = data['volume']
         self.number = data['number']
@@ -56,7 +63,12 @@ class Issue():
         for section in data['sections']:
             self.section = section
         self.publications = data['articles'][0]['publications']
-        print(self.issue_id)
+
+    def get(self, attribute):
+        if attribute in self._data:
+            return self._data[attribute]
+        else:
+            logger.warning(f"{attribute} not in issue")
 
 
 class JournalPoll():
@@ -72,7 +84,6 @@ class JournalPoll():
     def load_config(self) -> None:
         g = CP['general']
         self.endpoint_contexts = g['endpoint_contexts']
-        self.endpoint_submissions = g['endpoint_submissions']
         self.endpoint_issues = g['endpoint_issues']
         self.journal_server = f"{g['journal_server']}/"
         self.token = f"apiToken={g['api_token']}"
@@ -99,29 +110,16 @@ class JournalPoll():
             f"build contexts REST call: {rest_call}")
         return rest_call
 
-    def rest_call_publications(self, href):
-        rest_call = href
-        logger.debug(
-            "build publications REST call: {rest_call}")
-        return rest_call
-
-    def rest_call_issues(self, jounal_name):
-        rest_call = ''.join([
-            self.journal_server,
-            jounal_name,
-            self.endpoint_issues])
-        logger.debug(
-            "build issues REST call: {rest_call}")
-        return rest_call
-
-    def rest_call_issue(self, jounal_name, issue_id):  # todo dann kann weg
+    def rest_call_issues(self, jounal_name, issue_id=None) -> str:
+        """call one or all issues from journal"""
+        issue_id = f'/{issue_id}' if issue_id else ''
         rest_call = ''.join([
             self.journal_server,
             jounal_name,
             self.endpoint_issues,
-            f'/{issue_id}'])
+            issue_id])
         logger.debug(
-            "build issue REST call: {rest_call}")
+            "build issues REST call: {rest_call}")
         return rest_call
 
     def _request_contexts(self) -> None:
@@ -135,7 +133,7 @@ class JournalPoll():
             issues = self._server_request(query_issues)
             for issue in issues['items']:
                 issue_data = issue
-                issue_query = self.rest_call_issue(
+                issue_query = self.rest_call_issues(
                     journal.url_path, issue['id'])
                 issue_data.update(self._server_request(issue_query))
                 if len(issue_data['articles']) > 0:
@@ -161,11 +159,14 @@ class ExportSAF:
     def load_config(self) -> None:
         e = CP['export']
         g = CP['general']
+        m = CP['meta']
         self.export_path = e['export_path']
         self.collection = e['collection']
         self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
         self.type = g['type']
+        self.dc_identifier_external_prefix = m['dc-identifier-external-prefix']
+        self.dc_rights_uri = m['dc-rights-uri']
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, name, schema=None) -> None:
@@ -209,6 +210,7 @@ class ExportSAF:
         publication = issue.publications[0]
         dcl = []
 
+        # Pagestart, Pageend
         try:
             start, end = publication['pages'].split('-')
             dcl.extend([
@@ -218,12 +220,13 @@ class ExportSAF:
         except ValueError:
             logger.info(f"'pages' property for {item_folder} missing")
 
-        volume = issue.volume
-        dcl.append(('bibliographicCitation', 'volume', '', volume), )
+        # Volume
+        dcl.append(('bibliographicCitation', 'volume', '', issue.volume), )
 
-        number = issue.number
-        dcl.append(('bibliographicCitation', 'number', '', number), )
+        # Number
+        dcl.append(('bibliographicCitation', 'number', '', issue.number), )
 
+        # Journaltitle
         jtitle = issue.parent.name[locale]
         dcl.append(('bibliographicCitation', 'journaltitle', '', jtitle), )
 
@@ -233,23 +236,25 @@ class ExportSAF:
             f'metadata_{schema}.xml',
             schema=schema)
 
-    def create_meta_file(self, item_folder, issue) -> None:
+    def create_dc_file(self, item_folder, issue) -> None:
         filename = 'dublin_core.xml'
 
         publication = issue.publications[0]
         locale = issue.locale
-        # issue = publication.issue
         lang = self.locale2isolang(publication.get('locale'))
         dcl = []
+        ext_prefix = self.dc_identifier_external_prefix
+        i_id = issue.issue_id
 
-        year = issue.year
-        dcl.append(('date', 'issued', '', year), )
+        # External
+        dcl.append(('identifier', 'external', '', f'{ext_prefix}{i_id}'), )
 
-        description = issue.parent.description[locale]
+        # Description
+        descr = issue.parent.description[locale]
         dcl.append((
-            'description', 'abstract', '', f'<![CDATA[{description}]]>'), )
+            'description', 'abstract', '', f'<![CDATA[{descr}]]>'), )
 
-        # dc.title, dc.title.translated
+        # Title
         for locale_, title in publication['fullTitle'].items():
             if title:
                 lng = self.locale2isolang(locale)
@@ -260,10 +265,14 @@ class ExportSAF:
                     dcl.append(
                         ('title', 'translated', f' language="{lng}"', title))
 
+        # Date issued
+        dcl.append(('date', 'issued', '', issue.year), )
+
+        # Date available
         date_ = publication['datePublished']
         dcl.append(('date', 'available', '', date_), )
 
-        # dc.contributor.author
+        # Author
         authors = publication['authorsString']
         authors_short = publication['authorsStringShort']
         all_authors = authors if len(authors) else authors_short
@@ -271,17 +280,17 @@ class ExportSAF:
             for author in all_authors.split(','):
                 dcl.append(('contributor', 'author', '', author.strip()), )
 
-        # dc.language.iso
+        # language
         dcl.append(('language', 'iso', '', lang), )
 
-        # dc.type
+        # Type
         dc_type = issue.section['title']
-        for k, v in dc_type.items():
-            if len(v):
-                dcl.append(('type', 'none', '', v.lower()), )
+        for k, type_ in dc_type.items():
+            if type_:
+                dcl.append(('type', 'none', '', type_.lower()), )
                 break
 
-        # dc.description.abstract
+        # Abstract / copy right uri
         galleys = publication['galleys']
         for galley in galleys:
             for locale, desc in galley['file']['description'].items():
@@ -290,9 +299,12 @@ class ExportSAF:
                     dcl.append(
                         ('description', 'abstract',
                          f' language="{lang}"', desc), )
+            copyright = galley['file']['copyrightOwner']
 
-            # TODO: check what types are
-            # dcl.append(('type', 'none', '', self.type), )
+            if not copyright:
+                copyright = self.dc_rights_uri
+
+            dcl.append(('rights', 'uri', '', copyright), )
 
         self.write_xml_file(item_folder, dcl, filename)
 
@@ -349,7 +361,7 @@ class ExportSAF:
                     .joinpath(journal_name, f'item_{num:03d}',
                               f'issue_{issue.issue_id}')
 
-                self.create_meta_file(item_folder, issue)
+                self.create_dc_file(item_folder, issue)
 
                 # write schema files
                 schemas = ['local', ]
@@ -370,7 +382,7 @@ class ExportSAF:
                     journal, item_folder, issue)
                 self.write_contents_file(item_folder, filenames)
 
-    def write_zips(self):
+    def write_zips(self) -> None:
         export_pth = Path(self.export_path)
         journals = [d for d in export_pth.iterdir() if d.is_dir()]
         size_abs = 0
@@ -385,13 +397,13 @@ class ExportSAF:
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                if Path(zipfile).is_file():
-                    shutil.rmtree(item)
-            shutil.rmtree(journal)
+                #if Path(zipfile).is_file():
+                #    shutil.rmtree(item)
+            #shutil.rmtree(journal)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
-def main():
+def main() -> None:
     jp = JournalPoll()
     jp._request_contexts()
     jp.serialise_journals(2, 3)
