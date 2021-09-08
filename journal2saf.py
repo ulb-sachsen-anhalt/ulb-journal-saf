@@ -36,7 +36,6 @@ class Journal():
         self.url_path = data['urlPath']
         self.url = data['url']
         self.issues = []
-        self.submissions = []  # TODO:  kann weg?
         self.publications = []
         self.description = data['description']
 
@@ -60,28 +59,10 @@ class Issue():
         print(self.issue_id)
 
 
-class Galley:
-    """This class stores single galley objects"""
-
-    def __init__(self, data, parent):
-        self.parent = parent
-        self.approved = data['isApproved']
-        file_ = data['file']
-
-        self.gallery_id = data['id']
-        self.submission_id = file_['submissionId']
-        self.submission_file_id = data['submissionFileId']
-
-        self.href = file_['_href']
-        self.url = file_['url']
-        self.description = file_['description']
-        self.mimetype = file_['mimetype']
-
-
 class JournalPoll():
     """This class is going to requests the journal server
        and even creating/collecting instances
-       of submissions and publication objects
+       of issues and publication objects
     """
 
     def __init__(self):
@@ -106,7 +87,7 @@ class JournalPoll():
         result_dct = result.json()
         if 'error' in result_dct.keys():
             logger.error(
-                f"server reequest failed due to: {result_dct}")
+                f"server request failed due to: {result_dct}")
             raise ValueError(result_dct)
         return result_dct
 
@@ -168,19 +149,6 @@ class JournalPoll():
             for data in journales['items'][start:end]:
                 journal_obj = Journal(data)
                 self.journals.append(journal_obj)
-
-    def extract_galleys(self) -> None:
-        s = p = g = 0
-        for j, journal in enumerate(self.journals, start=1):
-            for s, subm in enumerate(journal.submissions, start=1):
-                for p, publ in enumerate(subm.publications, start=1):
-                    for g, galley in enumerate(publ.data['galleys'], start=1):
-                        galley_obj = Galley(galley, self)
-                        publ.galleys.append(galley_obj)
-
-        logger.info(
-            f"proccess {j} journals, {s} submissions, "
-            f"{p} publication {g} galleys")
 
 
 class ExportSAF:
@@ -428,7 +396,6 @@ def main():
     jp._request_contexts()
     jp.serialise_journals(2, 3)
     jp._request_issues()
-    jp.extract_galleys()
 
     saf = ExportSAF(jp.journals)
     saf.export()
