@@ -1,0 +1,14 @@
+[general]
+    api_token = <token generate by ojs/omp>
+    endpoint_contexts = /api/v1/contexts
+    endpoint_issues = /api/v1/issues
+    journal_server = https://ojs.domain.com
+    # 	Monograph / Article
+    type = Article
+
+[export]
+    export_path = ./export
+    collection = <dspace handle eg.: 123456789/26132>
+
+[meta]
+    dc-identifier-external-prefix = ojs

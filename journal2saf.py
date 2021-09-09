@@ -39,7 +39,9 @@ class Journal():
         self.url_path = data['urlPath']
         self.url = data['url']
         self.description = data['description']
+        self.journal_id = data['id']
         self.issues = []
+        self.contexts = []
 
     def get(self, attribute):
         if attribute in self._data:
@@ -52,6 +54,7 @@ class Issue():
     """This class stores single issue objects"""
 
     def __init__(self, data, parent):
+        self._data = data
         self.parent = parent   # journal object
         self.issue_id = data['id']
         self.date_published = data['datePublished']
@@ -69,6 +72,21 @@ class Issue():
             return self._data[attribute]
         else:
             logger.warning(f"{attribute} not in issue")
+
+
+class Context():
+    """This class stores single context objects"""
+
+    def __init__(self, data, parent):
+        self._data = data
+        self.parent = parent
+        self.name = data['urlPath']
+
+    def get(self, attribute):
+        if attribute in self._data:
+            return self._data[attribute]
+        else:
+            logger.warning(f"{attribute} not in context")
 
 
 class JournalPoll():
@@ -89,12 +107,14 @@ class JournalPoll():
         self.token = f"apiToken={g['api_token']}"
 
     def _server_request(self, query) -> dict:
-        # no need to verify, 'cause we trust the server
         if '?' in query:
             query += f'&{self.token}'
         else:
             query += f'?{self.token}'
+
+        # no need to verify, 'cause we trust the server
         result = requests.get(query, verify=False)
+
         result_dct = result.json()
         if 'error' in result_dct.keys():
             logger.error(
@@ -102,51 +122,66 @@ class JournalPoll():
             raise ValueError(result_dct)
         return result_dct
 
-    def rest_call_contexts(self) -> str:
+    def rest_call_contexts(self, journal_name=None, context_id=None) -> str:
+        """call on or all context(s) from server"""
+
+        context = journal_name if journal_name else '_'
+        context_id = f'/{context_id}' if context_id else ''
         rest_call = ''.join([
             self.journal_server,
-            self.endpoint_contexts])
+            context,
+            self.endpoint_contexts,
+            context_id])
         logger.info(
             f"build contexts REST call: {rest_call}")
         return rest_call
 
-    def rest_call_issues(self, jounal_name, issue_id=None) -> str:
-        """call one or all issues from journal"""
+    def rest_call_issues(self, jounal_url, issue_id=None) -> str:
+        """call one or all issue(s) from journal"""
+
         issue_id = f'/{issue_id}' if issue_id else ''
         rest_call = ''.join([
-            self.journal_server,
-            jounal_name,
+            jounal_url,
             self.endpoint_issues,
             issue_id])
         logger.debug(
             "build issues REST call: {rest_call}")
         return rest_call
 
-    def _request_contexts(self) -> None:
+    def _request_items(self) -> None:
         query_contexts = self.rest_call_contexts()
-        self.journals_dict = self._server_request(query_contexts)
-
-    def _request_issues(self) -> None:
-        for journal in self.journals:
-            query_issues = self.rest_call_issues(journal.url_path)
-            logger.info(f'request all issues: {query_issues}')
-            issues = self._server_request(query_issues)
-            for issue in issues['items']:
-                issue_data = issue
-                issue_query = self.rest_call_issues(
-                    journal.url_path, issue['id'])
-                issue_data.update(self._server_request(issue_query))
-                if len(issue_data['articles']) > 0:
-                    issue_ob = Issue(issue_data, journal)
-                    journal.issues.append(issue_ob)
+        self.items_dict = self._server_request(query_contexts)
 
     def serialise_journals(self, start=0, end=-1) -> None:
-        journales = self.journals_dict
+        journales = self.items_dict
         if 'items' in journales.keys():
             logger.info(f"{len(journales['items'])} journals found")
             for data in journales['items'][start:end]:
                 journal_obj = Journal(data)
                 self.journals.append(journal_obj)
+
+    def _request_issues(self) -> None:
+        for journal in self.journals:
+            query_issues = self.rest_call_issues(journal.url)
+            logger.info(f'request all issues: {query_issues}')
+            issues_dict = self._server_request(query_issues)
+            for issue in issues_dict['items']:
+                issue_data = issue
+                issue_query = self.rest_call_issues(
+                    journal.url, issue['id'])
+                issue_data.update(self._server_request(issue_query))
+                if len(issue_data['articles']) > 0:
+                    issue_ob = Issue(issue_data, journal)
+                    journal.issues.append(issue_ob)
+
+    def _request_contexts(self) -> None:
+        for journal in self.journals:
+            id_ = journal.journal_id
+            query_context = self.rest_call_contexts(journal.url_path, id_)
+            logger.info(f'request all contexts: {query_context}')
+            context_dict = self._server_request(query_context)
+            context = Context(context_dict, journal)
+            journal.contexts.append(context)
 
 
 class ExportSAF:
@@ -166,7 +201,6 @@ class ExportSAF:
         self.journal_server = g['journal_server']
         self.type = g['type']
         self.dc_identifier_external_prefix = m['dc-identifier-external-prefix']
-        self.dc_rights_uri = m['dc-rights-uri']
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, name, schema=None) -> None:
@@ -230,7 +264,12 @@ class ExportSAF:
         jtitle = issue.parent.name[locale]
         dcl.append(('bibliographicCitation', 'journaltitle', '', jtitle), )
 
+        # Open access
         dcl.append(('openaccess', 'none', '', 'true'), )
+
+        # Access rights
+        dcl.append(('accessrights', 'dnb', '', 'free'), )
+
         self.write_xml_file(
             item_folder, dcl,
             f'metadata_{schema}.xml',
@@ -238,7 +277,8 @@ class ExportSAF:
 
     def create_dc_file(self, item_folder, issue) -> None:
         filename = 'dublin_core.xml'
-
+        parent = issue.parent
+        context = parent.contexts[0]
         publication = issue.publications[0]
         locale = issue.locale
         lang = self.locale2isolang(publication.get('locale'))
@@ -289,6 +329,8 @@ class ExportSAF:
             if type_:
                 dcl.append(('type', 'none', '', type_.lower()), )
                 break
+        else:
+            dcl.append(('type', 'none', '', self.type), )
 
         # Abstract / copy right uri
         galleys = publication['galleys']
@@ -299,12 +341,16 @@ class ExportSAF:
                     dcl.append(
                         ('description', 'abstract',
                          f' language="{lang}"', desc), )
-            copyright = galley['file']['copyrightOwner']
 
-            if not copyright:
-                copyright = self.dc_rights_uri
+        # Rights (License)
+        license_url = context.get('licenseUrl')
+        if license_url:
+            dcl.append(('rights', 'uri', '', license_url), )
 
-            dcl.append(('rights', 'uri', '', copyright), )
+        # Issn
+        online_issn = context.get('onlineIssn')
+        if online_issn:
+            dcl.append(('identifier', 'issn', '', online_issn), )
 
         self.write_xml_file(item_folder, dcl, filename)
 
@@ -397,17 +443,18 @@ class ExportSAF:
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                #if Path(zipfile).is_file():
-                #    shutil.rmtree(item)
-            #shutil.rmtree(journal)
+                if Path(zipfile).is_file():
+                    shutil.rmtree(item)
+            shutil.rmtree(journal)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
 def main() -> None:
     jp = JournalPoll()
-    jp._request_contexts()
-    jp.serialise_journals(2, 3)
+    jp._request_items()
+    jp.serialise_journals(1, 3)
     jp._request_issues()
+    jp._request_contexts()
 
     saf = ExportSAF(jp.journals)
     saf.export()
