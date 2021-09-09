@@ -5,3 +5,5 @@ venv
 # ignore ide artifacts
 .vscode
 
+conf/config.ini
+
