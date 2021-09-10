@@ -5,13 +5,18 @@ import logging
 import argparse
 import shutil
 import mimetypes
-import requests
 import warnings
+
+import paramiko
+import requests
 import pycountry
+
 from pathlib import Path
 from configparser import ConfigParser
+from paramiko.client import SSHClient
 
-warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+warnings.filterwarnings(
+    'ignore', message='Unverified HTTPS request')
 
 ###############################################################
 STATUS_PUBLISHED = 3
@@ -33,7 +38,7 @@ __all__ = ['Journal', 'Issue', 'JournalPoll', 'ExportSAF']
 class Journal():
     """This class stores single journal objects"""
 
-    def __init__(self, data):
+    def __init__(self, data) -> None:
         self._data = data
         self.name = data['name']
         self.url_path = data['urlPath']
@@ -53,7 +58,7 @@ class Journal():
 class Issue():
     """This class stores single issue objects"""
 
-    def __init__(self, data, parent):
+    def __init__(self, data, parent) -> None:
         self._data = data
         self.parent = parent   # journal object
         self.issue_id = data['id']
@@ -77,9 +82,8 @@ class Issue():
 class Context():
     """This class stores single context objects"""
 
-    def __init__(self, data, parent):
+    def __init__(self, data, parent) -> None:
         self._data = data
-        self.parent = parent
         self.name = data['urlPath']
 
     def get(self, attribute):
@@ -95,7 +99,7 @@ class JournalPoll():
        of issues and publication objects
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.journals = []
         self.load_config()
 
@@ -187,7 +191,7 @@ class JournalPoll():
 class ExportSAF:
     """Export given data to -Simple Archive Format-"""
 
-    def __init__(self, journals):
+    def __init__(self, journals) -> None:
         self.journals = journals
         self.load_config()
 
@@ -449,17 +453,97 @@ class ExportSAF:
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
+class TransferSAF:
+    """Transfer SAF-zip files to dspace server"""
+
+    def __init__(self) -> None:
+        self.load_config()
+
+    def load_config(self) -> None:
+        s = CP['scp']
+        self.export_path = CP['export']['export_path']
+        self.server = s['server']
+        self.user = s['user']
+        self.key_filename = s['key_filename']
+
+    def get_client(self) -> SSHClient:
+        client = paramiko.SSHClient()
+        client.load_system_host_keys()
+        try:
+            client.connect(
+                self.server,
+                username=self.user,
+                key_filename=self.key_filename)
+        except Exception as err:
+            logger.error(err)
+        return client
+
+    def get_files(self) -> list:
+        export_path = Path(self.export_path)
+        zip_files = []
+        if export_path.exists():
+            for zip in export_path.iterdir():
+                zipfile = zip.absolute()
+                zip_files.append(zipfile)
+        return zip_files
+
+    def transfer_files(self, files) -> None:
+        client = self.get_client()
+        with client.open_sftp() as ftp_client:
+            for file_ in files:
+                ftp_client.put(file_, f'{file_.name}')
+        client.close()
+        logger.info('transfer done')
+
+    def run_commands(self):
+        client = self.get_client()
+        # stin, stdout, stderr = client.exec_command(
+        #     "docker exec --user dspace dspace-test_dspace_1 "
+        #     "/opt/dspace/repo/bin/dspace import --help"
+        #     )
+        stin, stdout, stderr = client.exec_command(
+            "docker exec --user dspace dspace-test_dspace_1 "
+            "/opt/dspace/repo/bin/dspace import --add "
+            #  " --test "
+            "-e 4dbaab6b-d7b1-45ef-b626-d596e1b633e0 "
+            "-source /opt/dspace/repo/infrastructure/ojs_omp/source/ "
+            "-z hsg_item_000.zip "
+            "-m /opt/dspace/repo/infrastructure/ojs_omp/map/hsg_issue_000.zip.map "
+            "-disable_inheritance;"
+            "cat /opt/dspace-test/volumes/infrastructure/ojs_omp/map/hsg_issue_000.zip.map"
+            )
+        for line in stderr.read().splitlines():
+            logger.error(line)
+        print('-' * 100)
+        for line in stdout.read().splitlines():
+            logger.info(line)
+
+
+
+        # if stderr:
+        #     logger.error(f'something went wrong...\n {r_err}')
+        # else:
+        #     print(stdout)
+        client.close()
+
+    def transfer(self):
+        zip_files = self.get_files()
+        self.transfer_files(zip_files)
+
 def main() -> None:
-    jp = JournalPoll()
-    jp._request_items()
-    jp.serialise_journals(1, 3)
-    jp._request_issues()
-    jp._request_contexts()
+    # jp = JournalPoll()
+    # jp._request_items()
+    # jp.serialise_journals(2, 3)
+    # jp._request_issues()
+    # jp._request_contexts()
 
-    saf = ExportSAF(jp.journals)
-    saf.export()
-    saf.write_zips()
+    # saf = ExportSAF(jp.journals)
+    # saf.export()
+    # saf.write_zips()
 
+    transfer = TransferSAF()
+    # transfer.transfer()
+    transfer.run_commands()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
