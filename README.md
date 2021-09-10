@@ -23,7 +23,16 @@ Um das Dantenbankfeld pub-id::doi anzulegen, ist es notwendig das DOI Plugin zu 
 
 Hier eine Bspl. Request (PUT) um die DOI umzuschreiben:
 
-curl -k -X PUT -H "Content-Type: application/json" -d '{"pub-id::doi":"123"}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101?apiToken=xyz-usw...
+curl -k -X PUT -H "Content-Type: application/json" -d '{"urlRemote":"path to dspace/handle"}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101?apiToken=xyz-usw...
+
 
 Resultat:
 https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101
+
+
+hier gibt es 2 files / checken wie das Programm reagiert
+https://publicdev.bibliothek.uni-halle.de/cicadina/api/v1/submissions
+
+Leider kann man die remoteUrl nicht ändern, was ein Problem ist:
+curl -k -X PUT -H "Content-Type: application/json" -d '{"urlRemote":"test"}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101/publications/100?apiToken=\<token\>
+{"error":"api.publication.403.cantEditPublished","errorMessage":"Sie k\u00f6nnen diesen Beitrag nicht \u00e4ndern, denn er wurde bereits ver\u00f6ffentlicht."}(venv) amuyf@ULB-201007Z:~/ulb-it-migration$                                                                                                                                        

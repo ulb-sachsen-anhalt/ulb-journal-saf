@@ -1,14 +1,21 @@
 [general]
-    api_token = <token generate by ojs/omp>
+    api_token = <token>
     endpoint_contexts = /api/v1/contexts
     endpoint_issues = /api/v1/issues
-    journal_server = https://ojs.domain.com
+    journal_server = <https://ojs.example.com>
     # 	Monograph / Article
     type = Article
 
 [export]
     export_path = ./export
-    collection = <dspace handle eg.: 123456789/26132>
+    collection = <handle e.g. 123456789/26132>
 
 [meta]
     dc-identifier-external-prefix = ojs
+
+[scp]
+    # dspace server
+    server = <https://dspace.example.com>
+    user = <user (keyowner)>
+    # path to key
+    key_filename = /home/<keyowner>/.ssh/id_rsa
