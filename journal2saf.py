@@ -458,15 +458,32 @@ class TransferSAF:
 
     def __init__(self) -> None:
         self.load_config()
+        self.client = None
 
     def load_config(self) -> None:
         s = CP['scp']
+        d = CP['docker']
+        ds = CP['dspace']
         self.export_path = CP['export']['export_path']
         self.server = s['server']
         self.user = s['user']
         self.key_filename = s['key_filename']
+        self.docker_user = d['user']
+        self.docker_container = d['container']
+        self.mapfile_folder = ds['mapfile_folder'] 
+        self.docker_dspace = ds['docker_dspace']
+        self.eperson = ds['eperson']
+        self.source = ds['source']
+        self.extra = ds['extra']
 
     def get_client(self) -> SSHClient:
+        try:
+            transport = self.client.get_transport()
+            transport.send_ignore()
+            return self.client
+        except (AttributeError, EOFError):
+            # connection is closed, reconnect
+            logger.info(f'connect ssh {self.server}')
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         try:
@@ -476,6 +493,8 @@ class TransferSAF:
                 key_filename=self.key_filename)
         except Exception as err:
             logger.error(err)
+            return None
+        self.client = client
         return client
 
     def get_files(self) -> list:
@@ -495,40 +514,85 @@ class TransferSAF:
         client.close()
         logger.info('transfer done')
 
-    def run_commands(self):
+    def run_command(self, command) -> list:
         client = self.get_client()
-        # stin, stdout, stderr = client.exec_command(
-        #     "docker exec --user dspace dspace-test_dspace_1 "
-        #     "/opt/dspace/repo/bin/dspace import --help"
-        #     )
-        stin, stdout, stderr = client.exec_command(
-            "docker exec --user dspace dspace-test_dspace_1 "
-            "/opt/dspace/repo/bin/dspace import --add "
-            #  " --test "
-            "-e 4dbaab6b-d7b1-45ef-b626-d596e1b633e0 "
-            "-source /opt/dspace/repo/infrastructure/ojs_omp/source/ "
-            "-z hsg_item_000.zip "
-            "-m /opt/dspace/repo/infrastructure/ojs_omp/map/hsg_issue_000.zip.map "
-            "-disable_inheritance;"
-            "cat /opt/dspace-test/volumes/infrastructure/ojs_omp/map/hsg_issue_000.zip.map"
-            )
+        logger.info('-' * 100)
+        logger.info(command)
+        logger.info('-' * 100)
+        lines = []
+        stin, stdout, stderr = client.exec_command(command)
         for line in stderr.read().splitlines():
             logger.error(line)
-        print('-' * 100)
         for line in stdout.read().splitlines():
+            lines.append(line)
+        return lines
+
+    def delete_mapfile(self, mapfile):
+        logging.info("delete mapfile {mapfile}")
+        user = self.docker_user
+        container = self.docker_container
+        mapfile_folder = self.mapfile_folder
+        cmd = (f"docker exec --user {user} {container} "
+               f"rm {mapfile_folder}{mapfile}")
+        self.run_command(cmd)
+
+    def import_saf(self, zipfile):
+        logging.info("start SAF import to dspace")
+        user = self.docker_user
+        container = self.docker_container
+        docker_dspace = self.docker_dspace
+        mapfile_folder = self.mapfile_folder
+        cmd = (
+            f"docker exec --user  {user} {container} "
+            f"{docker_dspace} import --add "
+            #  " --test "
+            f"--eperson {self.eperson} "
+            f"--source {self.source} "
+            f"--zip {zipfile} "
+            f"--mapfile {mapfile_folder}{zipfile}.map "
+            f"{self.extra}")
+        logger.debug(cmd)
+        response = self.run_command(cmd)
+        for line in response:
             logger.info(line)
 
+    def get_handle(self, mapfile) -> str:
+        user = self.docker_user
+        container = self.docker_container
+        mapfile_folder = self.mapfile_folder
+        cmd = (f"docker exec --user {user} {container} "
+               f"cat {mapfile_folder}{mapfile}")
+        result = self.run_command(cmd)
+        handle = ''
+        for rline in result:
+            handle = rline.split()[-1].decode()
+        print('das handle --->', handle)
+        return handle
 
+    def get_doi(self, handle):
+        cmd = ("docker exec --user dspace dspace-test_dspace_1 "
+               "/opt/dspace/repo/bin/dspace doi-organiser "
+               f"--list | grep {handle}")
+        result = self.run_command(cmd)
+        dioprefix = "http://dx.doi.org/"
 
-        # if stderr:
-        #     logger.error(f'something went wrong...\n {r_err}')
-        # else:
-        #     print(stdout)
-        client.close()
+        for rline in result:
+            dioprefix += rline.split()[0].decode()
+        print('die doi zum handle -->', dioprefix)
 
     def transfer(self):
         zip_files = self.get_files()
         self.transfer_files(zip_files)
+        for zipfile in ['hsg_issue_000.zip', ]:
+            mapfile = f"{zipfile}.map"
+            logger.info(
+                f"********************import {zipfile} **********************")
+            self.delete_mapfile(mapfile)
+            self.import_saf(zipfile)
+            handle = self.get_handle(mapfile)
+            doi = self.get_doi(handle)
+            logger.info(f"DOI: -> {doi}")
+
 
 def main() -> None:
     # jp = JournalPoll()
@@ -542,8 +606,20 @@ def main() -> None:
     # saf.write_zips()
 
     transfer = TransferSAF()
-    # transfer.transfer()
-    transfer.run_commands()
+    transfer.transfer()
+
+
+
+    cmd = ("docker exec --user dspace dspace-test_dspace_1 "
+           "/opt/dspace/repo/bin/dspace import --delete "
+           #  " --test "
+           "-e axel.bauer@bibliothek.uni-halle.de "
+           "-m /opt/dspace/repo/infrastructure/ojs_omp/map/hsg_issue_000.zip.map "
+           "-disable_inheritance")
+    print('delete item')
+    result = transfer.run_command(cmd)   
+    print('done....')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
