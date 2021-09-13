@@ -35,4 +35,7 @@ https://publicdev.bibliothek.uni-halle.de/cicadina/api/v1/submissions
 
 Leider kann man die remoteUrl nicht ändern, was ein Problem ist:
 curl -k -X PUT -H "Content-Type: application/json" -d '{"urlRemote":"test"}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101/publications/100?apiToken=\<token\>
-{"error":"api.publication.403.cantEditPublished","errorMessage":"Sie k\u00f6nnen diesen Beitrag nicht \u00e4ndern, denn er wurde bereits ver\u00f6ffentlicht."}(venv) amuyf@ULB-201007Z:~/ulb-it-migration$                                                                                                                                        
+{"error":"api.publication.403.cantEditPublished","errorMessage":"Sie k\u00f6nnen diesen Beitrag nicht \u00e4ndern, denn er wurde bereits ver\u00f6ffentlicht."}(venv) amuyf@ULB-201007Z:~/ulb-it-migration$
+
+
+docker exec --user dspace dspace-test_dspace_1 /opt/dspace/repo/bin/dspace import --help
