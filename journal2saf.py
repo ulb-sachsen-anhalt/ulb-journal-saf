@@ -78,6 +78,13 @@ class Issue():
         else:
             logger.warning(f"{attribute} not in issue")
 
+    def __getattr__(self, name: str) -> str:
+        if name in self._data:
+            print('bingo', name)
+            return self._data[name]
+        else:
+            return self.__getattribute__(name)
+
 
 class Context():
     """This class stores single context objects"""
@@ -91,6 +98,13 @@ class Context():
             return self._data[attribute]
         else:
             logger.warning(f"{attribute} not in context")
+
+    def __getattr__(self, name: str) -> str:
+        if name in self._data:
+            print('bingo', name)
+            return self._data[name]
+        else:
+            return self.__getattribute__(name)
 
 
 class JournalPoll():
@@ -198,13 +212,13 @@ class ExportSAF:
     def load_config(self) -> None:
         e = CP['export']
         g = CP['general']
-        m = CP['meta']
+        self.meta = CP['meta']
         self.export_path = e['export_path']
         self.collection = e['collection']
         self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
         self.type = g['type']
-        self.dc_identifier_external_prefix = m['dc-identifier-external-prefix']
+        self.dc_identifier_external_prefix = 'ojs'  # TODO: use config
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, name, schema=None) -> None:
@@ -279,6 +293,42 @@ class ExportSAF:
             f'metadata_{schema}.xml',
             schema=schema)
 
+    def write_dc_meta_file(self, item_folder, context, issue) -> None:
+        filename = 'dublin_core.xml'
+        parent = issue.parent
+        context = parent.contexts[0]
+        publication = issue.publications[0]
+        locale = issue.locale
+        lang = self.locale2isolang(publication.get('locale'))
+        dcl = []
+        ext_prefix = self.dc_identifier_external_prefix
+        i_id = issue.issue_id
+        for k, v in self.meta.items():
+            #if v == "dc.description.abstract":
+            #    dcl.append(('dc', f'<![CDATA[{descr}]]>', *meta_tpl[1:]), )
+            #    continue
+            print('?' * 100)
+            meta_tpl = k.split('.')
+            schema = meta_tpl.pop(0)
+            if v.startswith('"') and v.endswith('"'):
+                # skalar value
+                value = v[1:-1]
+            else:
+                value = eval(v)
+                if value.count('<') > 0 or value.count('>'):
+                    value = f'<![CDATA[{value}]]>'
+                print(meta_tpl)
+                
+            if value:
+                dcl.append((schema, value, *meta_tpl), )
+
+
+        print("+" * 100)
+        print(dcl)    
+
+
+
+
     def create_dc_file(self, item_folder, issue) -> None:
         filename = 'dublin_core.xml'
         parent = issue.parent
@@ -289,6 +339,7 @@ class ExportSAF:
         dcl = []
         ext_prefix = self.dc_identifier_external_prefix
         i_id = issue.issue_id
+
 
         # External
         dcl.append(('identifier', 'external', '', f'{ext_prefix}{i_id}'), )
@@ -412,6 +463,7 @@ class ExportSAF:
                               f'issue_{issue.issue_id}')
 
                 self.create_dc_file(item_folder, issue)
+                self.write_dc_meta_file(item_folder, journal, issue)
 
                 # write schema files
                 schemas = ['local', ]
@@ -447,9 +499,9 @@ class ExportSAF:
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                if Path(zipfile).is_file():
-                    shutil.rmtree(item)
-            shutil.rmtree(journal)
+                #if Path(zipfile).is_file():
+                #    shutil.rmtree(item)
+            #shutil.rmtree(journal)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
@@ -464,13 +516,14 @@ class TransferSAF:
         s = CP['scp']
         d = CP['docker']
         ds = CP['dspace']
+        self.dry_run = CP['general'].getboolean('dry-run')
         self.export_path = CP['export']['export_path']
         self.server = s['server']
         self.user = s['user']
         self.key_filename = s['key_filename']
         self.docker_user = d['user']
         self.docker_container = d['container']
-        self.mapfile_folder = ds['mapfile_folder'] 
+        self.mapfile_folder = ds['mapfile_folder']
         self.docker_dspace = ds['docker_dspace']
         self.eperson = ds['eperson']
         self.source = ds['source']
@@ -516,9 +569,7 @@ class TransferSAF:
 
     def run_command(self, command) -> list:
         client = self.get_client()
-        logger.info('-' * 100)
-        logger.info(command)
-        logger.info('-' * 100)
+        logger.info(f"\n{'-' * 100}\n{command}\n{'-' * 100}")
         lines = []
         stin, stdout, stderr = client.exec_command(command)
         for line in stderr.read().splitlines():
@@ -529,96 +580,88 @@ class TransferSAF:
 
     def delete_mapfile(self, mapfile):
         logging.info("delete mapfile {mapfile}")
-        user = self.docker_user
-        container = self.docker_container
-        mapfile_folder = self.mapfile_folder
-        cmd = (f"docker exec --user {user} {container} "
-               f"rm {mapfile_folder}{mapfile}")
+        cmd = (
+            f"docker exec --user {self.docker_user} {self.docker_container} "
+            f"rm {self.mapfile_folder}{mapfile}")
         self.run_command(cmd)
 
     def import_saf(self, zipfile):
         logging.info("start SAF import to dspace")
-        user = self.docker_user
-        container = self.docker_container
-        docker_dspace = self.docker_dspace
-        mapfile_folder = self.mapfile_folder
         cmd = (
-            f"docker exec --user  {user} {container} "
-            f"{docker_dspace} import --add "
+            f"docker exec --user  {self.docker_user} {self.docker_container} "
+            f"{self.docker_dspace} import --add "
             #  " --test "
             f"--eperson {self.eperson} "
             f"--source {self.source} "
             f"--zip {zipfile} "
-            f"--mapfile {mapfile_folder}{zipfile}.map "
+            f"--mapfile {self.mapfile_folder}{zipfile}.map "
             f"{self.extra}")
-        logger.debug(cmd)
         response = self.run_command(cmd)
         for line in response:
             logger.info(line)
 
     def get_handle(self, mapfile) -> str:
-        user = self.docker_user
-        container = self.docker_container
-        mapfile_folder = self.mapfile_folder
-        cmd = (f"docker exec --user {user} {container} "
-               f"cat {mapfile_folder}{mapfile}")
+        cmd = (
+            f"docker exec --user {self.docker_user} {self.docker_container} "
+            f"cat {self.mapfile_folder}{mapfile}")
         result = self.run_command(cmd)
         handle = ''
         for rline in result:
             handle = rline.split()[-1].decode()
-        print('das handle --->', handle)
+        logger.info(f'handle -------> {handle}')
         return handle
 
-    def get_doi(self, handle):
-        cmd = ("docker exec --user dspace dspace-test_dspace_1 "
-               "/opt/dspace/repo/bin/dspace doi-organiser "
-               f"--list | grep {handle}")
+    def get_doi(self, handle) -> str:
+        cmd = (
+            f"docker exec --user {self.docker_user} {self.docker_container} "
+            f"{self.docker_dspace} doi-organiser "
+            f"--list | grep {handle}")
         result = self.run_command(cmd)
         dioprefix = "http://dx.doi.org/"
 
         for rline in result:
             dioprefix += rline.split()[0].decode()
-        print('die doi zum handle -->', dioprefix)
+        return dioprefix
+
+    def delete_import(self, mapfile) -> None:
+        cmd = (f"docker exec --user {self.docker_user} dspace-test_dspace_1 "
+               f"{self.docker_dspace} import --delete "
+               f"--eperson {self.eperson} "
+               f"--mapfile {self.mapfile_folder}{mapfile} "
+               "-disable_inheritance")
+        self.run_command(cmd)
+        logger.info(f'delete item with handel in {mapfile} done...')
 
     def transfer(self):
         zip_files = self.get_files()
+        dry_run = self.dry_run
         self.transfer_files(zip_files)
         for zipfile in ['hsg_issue_000.zip', ]:
             mapfile = f"{zipfile}.map"
             logger.info(
-                f"********************import {zipfile} **********************")
+                f"********************import {zipfile}**********************")
             self.delete_mapfile(mapfile)
             self.import_saf(zipfile)
             handle = self.get_handle(mapfile)
             doi = self.get_doi(handle)
-            logger.info(f"DOI: -> {doi}")
+            logger.info(f"DOI: -------> {doi}")
+            if dry_run:
+                self.delete_import(mapfile)
 
 
 def main() -> None:
-    # jp = JournalPoll()
-    # jp._request_items()
-    # jp.serialise_journals(2, 3)
-    # jp._request_issues()
-    # jp._request_contexts()
+    jp = JournalPoll()
+    jp._request_items()
+    jp.serialise_journals(2, 3)
+    jp._request_issues()
+    jp._request_contexts()
 
-    # saf = ExportSAF(jp.journals)
-    # saf.export()
-    # saf.write_zips()
+    saf = ExportSAF(jp.journals)
+    saf.export()
+    saf.write_zips()
 
-    transfer = TransferSAF()
-    transfer.transfer()
-
-
-
-    cmd = ("docker exec --user dspace dspace-test_dspace_1 "
-           "/opt/dspace/repo/bin/dspace import --delete "
-           #  " --test "
-           "-e axel.bauer@bibliothek.uni-halle.de "
-           "-m /opt/dspace/repo/infrastructure/ojs_omp/map/hsg_issue_000.zip.map "
-           "-disable_inheritance")
-    print('delete item')
-    result = transfer.run_command(cmd)   
-    print('done....')
+    # transfer = TransferSAF()
+    # transfer.transfer()
 
 
 if __name__ == "__main__":
