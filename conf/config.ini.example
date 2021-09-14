@@ -5,13 +5,23 @@
     journal_server = <https://ojs.example.com>
     # 	Monograph / Article
     type = Article
+    # delete dspace import afterwards
+    dry-run = true
 
 [export]
     export_path = ./export
     collection = <handle e.g. 123456789/26132>
 
 [meta]
-    dc-identifier-external-prefix = ojs
+    dc.identifier.external = issue.id
+    dc.description.abstract = context.description[locale]
+    dc.date.issued = issue.year
+    dc.date.available = issue.datePublished
+
+    local.accessrights.dnb = "free"
+    local.openaccess = "true"
+    local.bibliographicCitation.number = issue.number
+    local.bibliographicCitation.volume = issue.volume
 
 [scp]
     # dspace server
