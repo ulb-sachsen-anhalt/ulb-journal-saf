@@ -2,3 +2,4 @@ requests
 lxml
 pycountry
 paramiko
+pytest
