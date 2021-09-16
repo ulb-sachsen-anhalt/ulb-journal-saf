@@ -8,37 +8,59 @@
     # delete dspace import afterwards
     dry-run = true
 
+
 [export]
     export_path = ./export
-    collection = <handle e.g. 123456789/26132>
+    collection = 123456789/26132
+    doi_prefix = http://dx.doi.org/
 
 [meta]
-    dc.identifier.external = issue.id
+    # some values are direct available:
+    # locale, language, pageend, pagestart
+    dc.identifier.external = "ojs" + str(issue.id)
     dc.description.abstract = context.description[locale]
     dc.date.issued = issue.year
     dc.date.available = issue.datePublished
+    dc.identifier.issn = context.onlineIssn
+    dc.contributor.author = issue.publication['authorsStringShort']
 
+    # todo: dc.title.language gibt es nicht
+    # dc.title.language = language
+    dc.type = "article"
+    dc.rights.uri = context.licenseUrl
+    dc.language.iso = language
+
+    # dc-identifier-external-prefix = ojs
     local.accessrights.dnb = "free"
     local.openaccess = "true"
-    local.bibliographicCitation.number = issue.number
-    local.bibliographicCitation.volume = issue.volume
+
+    local.bibliographicCitation.pagestart = pagestart
+    local.bibliographicCitation.pageend = pageend
+    
+    # TODO: number in dspace anlegen! 
+    #local.bibliographicCitation.number = issue.number
+    # TODO: volume in dspace anlegen! 
+    #local.bibliographicCitation.volume = issue.volume
+    # TODO: journaltitle in dspace anlegen! 
+    #local.bibliographicCitation.journaltitle = context.name[locale]
 
 [scp]
     # dspace server
-    server = <https://dspace.example.com>
-    user = <user (keyowner)>
+    server = ojs.example.com
+    user = <user>
     # path to key
-    key_filename = /home/<keyowner>/.ssh/id_rsa
-
+    key_filename = /home/<user>/.ssh/<id_rsa_ojs>
 
 [docker]
-    container = dspace-test_dspace_1
+    container = <dspace-container-name>
     user = dspace
 
 [dspace]
     # dspace executable
+    eperson = omp@example.com
     docker_dspace = /opt/dspace/repo/bin/dspace
-    mapfile_folder = /opt/dspace/repo/infrastructure/ojs_omp/map/
-    eperson = axel.bauer@bibliothek.uni-halle.de
-    source = /opt/dspace/repo/infrastructure/ojs_omp/source/
+    docker_mapfile = /opt/dspace/repo/infrastructure/ojs_omp/map/
+    docker_zipsource = /opt/dspace/repo/infrastructure/ojs_omp/source/
+    server_zipsource = /opt/dspace-test/volumes/infrastructure/ojs_omp/source/
     extra = --disable_inheritance
+
