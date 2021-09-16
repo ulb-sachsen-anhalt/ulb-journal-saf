@@ -32,11 +32,11 @@ logger = logging.getLogger(__file__.split('/')[-1])
 CP = ConfigParser()
 CP.read(CONFIG)
 
-__all__ = ['Journal', 'Issue', 'JournalPoll', 'ExportSAF']
+__all__ = ['Publisher', 'Issue', 'DataPoll', 'ExportSAF']
 
 
-class Journal():
-    """This class stores single journal objects"""
+class Publisher():
+    """This class stores single Publisher object"""
 
     def __init__(self, data) -> None:
         self._data = data
@@ -46,13 +46,12 @@ class Journal():
         self.description = data['description']
         self.journal_id = data['id']
         self.issues = []
-        self.contexts = []
 
-    def get(self, attribute):
-        if attribute in self._data:
-            return self._data[attribute]
+    def __getattr__(self, name: str) -> any:
+        if name in self._data:
+            return self._data[name]
         else:
-            logger.warning(f"{attribute} not in journal")
+            return self.__getattribute__(name)
 
 
 class Issue():
@@ -61,60 +60,31 @@ class Issue():
     def __init__(self, data, parent) -> None:
         self._data = data
         self.parent = parent   # journal object
-        self.issue_id = data['id']
         self.date_published = data['datePublished']
         for article in data['articles']:
             self.locale = article['locale']
-        self.volume = data['volume']
-        self.number = data['number']
-        self.year = data['year']
         for section in data['sections']:
             self.section = section
         self.publications = data['articles'][0]['publications']
+        self.publication = self.publications[0]
+        self.galleys = data['articles'][0]['publications'][0]['galleys']
+        self.galley = self.galleys[0] if self.galleys else []
 
-    def get(self, attribute):
-        if attribute in self._data:
-            return self._data[attribute]
-        else:
-            logger.warning(f"{attribute} not in issue")
-
-    def __getattr__(self, name: str) -> str:
+    def __getattr__(self, name: str) -> any:
         if name in self._data:
-            print('bingo', name)
             return self._data[name]
         else:
             return self.__getattribute__(name)
 
 
-class Context():
-    """This class stores single context objects"""
-
-    def __init__(self, data, parent) -> None:
-        self._data = data
-        self.name = data['urlPath']
-
-    def get(self, attribute):
-        if attribute in self._data:
-            return self._data[attribute]
-        else:
-            logger.warning(f"{attribute} not in context")
-
-    def __getattr__(self, name: str) -> str:
-        if name in self._data:
-            print('bingo', name)
-            return self._data[name]
-        else:
-            return self.__getattribute__(name)
-
-
-class JournalPoll():
-    """This class is going to requests the journal server
+class DataPoll():
+    """This class is going to requests the omp/ojs server
        and even creating/collecting instances
        of issues and publication objects
     """
 
     def __init__(self) -> None:
-        self.journals = []
+        self.publishers = []
         self.load_config()
 
     def load_config(self) -> None:
@@ -140,16 +110,14 @@ class JournalPoll():
             raise ValueError(result_dct)
         return result_dct
 
-    def rest_call_contexts(self, journal_name=None, context_id=None) -> str:
-        """call on or all context(s) from server"""
+    def rest_call_context(self, journal_name=None, id_=None) -> str:
+        """call *one* or *all* context(s) from server"""
 
         context = journal_name if journal_name else '_'
-        context_id = f'/{context_id}' if context_id else ''
+        id_ = f'/{id_}' if id_ else ''
         rest_call = ''.join([
             self.journal_server,
-            context,
-            self.endpoint_contexts,
-            context_id])
+            context, self.endpoint_contexts, id_])
         logger.info(
             f"build contexts REST call: {rest_call}")
         return rest_call
@@ -159,54 +127,55 @@ class JournalPoll():
 
         issue_id = f'/{issue_id}' if issue_id else ''
         rest_call = ''.join([
-            jounal_url,
-            self.endpoint_issues,
-            issue_id])
+            jounal_url, self.endpoint_issues, issue_id])
         logger.debug(
             "build issues REST call: {rest_call}")
         return rest_call
 
-    def _request_items(self) -> None:
-        query_contexts = self.rest_call_contexts()
-        self.items_dict = self._server_request(query_contexts)
+    def _request_publishers(self) -> None:
+        query_publishers = self.rest_call_context()
+        self.publishers_item_dict = self._server_request(query_publishers)
 
-    def serialise_journals(self, start=0, end=-1) -> None:
-        journales = self.items_dict
-        if 'items' in journales.keys():
-            logger.info(f"{len(journales['items'])} journals found")
-            for data in journales['items'][start:end]:
-                journal_obj = Journal(data)
-                self.journals.append(journal_obj)
+    def serialise_data(self, start=0, end=-1) -> None:
+        publishers = self.publishers_item_dict
+        if 'items' in publishers.keys():
+            logger.info(f"{len(publishers['items'])} publishers found")
+            for data in publishers['items'][start:end]:
+                publisher = Publisher(data)
+                self.publishers.append(publisher)
+
+    def _request_contexts(self) -> None:
+        for publisher in self.publishers:
+            id_ = publisher.journal_id
+            name = publisher.url_path
+            query_context = self.rest_call_context(publisher.url_path, id_)
+            context_dict = self._server_request(query_context)
+            logger.info(f'got {len(context_dict)} keys/values for {name}')
+            publisher._data.update(context_dict)
 
     def _request_issues(self) -> None:
-        for journal in self.journals:
-            query_issues = self.rest_call_issues(journal.url)
-            logger.info(f'request all issues: {query_issues}')
+        for publisher in self.publishers:
+            query_issues = self.rest_call_issues(publisher.url)
+            logger.info(f'request all issues for {publisher.url_path}:'
+                        f' {query_issues}')
             issues_dict = self._server_request(query_issues)
+            logger.info(f'receive {issues_dict.get("itemsMax", 0)} issues')
             for issue in issues_dict['items']:
                 issue_data = issue
                 issue_query = self.rest_call_issues(
-                    journal.url, issue['id'])
+                    publisher.url, issue['id'])
                 issue_data.update(self._server_request(issue_query))
                 if len(issue_data['articles']) > 0:
-                    issue_ob = Issue(issue_data, journal)
-                    journal.issues.append(issue_ob)
-
-    def _request_contexts(self) -> None:
-        for journal in self.journals:
-            id_ = journal.journal_id
-            query_context = self.rest_call_contexts(journal.url_path, id_)
-            logger.info(f'request all contexts: {query_context}')
-            context_dict = self._server_request(query_context)
-            context = Context(context_dict, journal)
-            journal.contexts.append(context)
+                    issue_ob = Issue(issue_data, publisher)
+                    publisher.issues.append(issue_ob)
 
 
 class ExportSAF:
     """Export given data to -Simple Archive Format-"""
 
     def __init__(self, journals) -> None:
-        self.journals = journals
+        # self.journals = journals
+        self.contexts = journals
         self.load_config()
 
     def load_config(self) -> None:
@@ -221,14 +190,17 @@ class ExportSAF:
         self.dc_identifier_external_prefix = 'ojs'  # TODO: use config
 
     @staticmethod
-    def write_xml_file(work_dir, dblcore, name, schema=None) -> None:
+    def write_xml_file(work_dir, dblcore, schema) -> None:
+        name = 'dublin_core.xml' if schema == 'dc'\
+                else f'metadata_{schema}.xml'
         work_dir.mkdir(parents=True, exist_ok=True)
         pth = work_dir / name
-        dcline = '  <dcvalue element="{}" qualifier="{}"{}>{}</dcvalue>'
+        logger.info(f"write {name}")
+        dcline = '  <dcvalue element="{1}" qualifier="{2}"{3}>{0}</dcvalue>'
         dcvalues = [dcline.format(*tpl) for tpl in dblcore]
-        schema = f' schema="{schema}"' if schema else ''
+        schema = f' schema="{schema}"' if schema != 'dc' else ''
 
-        with open(pth, 'w') as fh:
+        with open(pth, 'w', encoding='utf-8') as fh:
             fh.write('<?xml version="1.0" encoding="UTF-8"?>\n')
             fh.write(f'<dublin_core{schema}>\n')
             fh.write('\n'.join(dcvalues))
@@ -256,158 +228,36 @@ class ExportSAF:
         with open(pth, 'w') as fh:
             fh.write(collection)
 
-    def write_local_file(self, item_folder, issue) -> None:
-        schema = 'local'
+    def write_meta_file(self, item_folder, issue) -> None:
+        context = issue.parent
         locale = issue.locale
-        publication = issue.publications[0]
-        dcl = []
+        language = self.locale2isolang(locale)
+        pagestart = issue.publication['pages']
+        pageend = issue.publication['pages']
+        schema_dict = {}
+        # ext_prefix = self.dc_identifier_external_prefix
 
-        # Pagestart, Pageend
-        try:
-            start, end = publication['pages'].split('-')
-            dcl.extend([
-                ('bibliographicCitation', 'pagestart', '', start),
-                ('bibliographicCitation', 'pageend', '', end)]
-            )
-        except ValueError:
-            logger.info(f"'pages' property for {item_folder} missing")
-
-        # Volume
-        dcl.append(('bibliographicCitation', 'volume', '', issue.volume), )
-
-        # Number
-        dcl.append(('bibliographicCitation', 'number', '', issue.number), )
-
-        # Journaltitle
-        jtitle = issue.parent.name[locale]
-        dcl.append(('bibliographicCitation', 'journaltitle', '', jtitle), )
-
-        # Open access
-        dcl.append(('openaccess', 'none', '', 'true'), )
-
-        # Access rights
-        dcl.append(('accessrights', 'dnb', '', 'free'), )
-
-        self.write_xml_file(
-            item_folder, dcl,
-            f'metadata_{schema}.xml',
-            schema=schema)
-
-    def write_dc_meta_file(self, item_folder, context, issue) -> None:
-        filename = 'dublin_core.xml'
-        parent = issue.parent
-        context = parent.contexts[0]
-        publication = issue.publications[0]
-        locale = issue.locale
-        lang = self.locale2isolang(publication.get('locale'))
-        dcl = []
-        ext_prefix = self.dc_identifier_external_prefix
-        i_id = issue.issue_id
         for k, v in self.meta.items():
-            #if v == "dc.description.abstract":
-            #    dcl.append(('dc', f'<![CDATA[{descr}]]>', *meta_tpl[1:]), )
-            #    continue
-            print('?' * 100)
             meta_tpl = k.split('.')
             schema = meta_tpl.pop(0)
+            while len(meta_tpl) < 3:
+                meta_tpl.append('', )
+
             if v.startswith('"') and v.endswith('"'):
-                # skalar value
+                # fixed value
                 value = v[1:-1]
             else:
                 value = eval(v)
-                if value.count('<') > 0 or value.count('>'):
+                if isinstance(value, str) and\
+                        (value.count('<') > 0 or value.count('>')):
                     value = f'<![CDATA[{value}]]>'
-                print(meta_tpl)
-                
+
             if value:
-                dcl.append((schema, value, *meta_tpl), )
+                schema_dict.setdefault(
+                    schema, []).append((value, *meta_tpl), )
 
-
-        print("+" * 100)
-        print(dcl)    
-
-
-
-
-    def create_dc_file(self, item_folder, issue) -> None:
-        filename = 'dublin_core.xml'
-        parent = issue.parent
-        context = parent.contexts[0]
-        publication = issue.publications[0]
-        locale = issue.locale
-        lang = self.locale2isolang(publication.get('locale'))
-        dcl = []
-        ext_prefix = self.dc_identifier_external_prefix
-        i_id = issue.issue_id
-
-
-        # External
-        dcl.append(('identifier', 'external', '', f'{ext_prefix}{i_id}'), )
-
-        # Description
-        descr = issue.parent.description[locale]
-        dcl.append((
-            'description', 'abstract', '', f'<![CDATA[{descr}]]>'), )
-
-        # Title
-        for locale_, title in publication['fullTitle'].items():
-            if title:
-                lng = self.locale2isolang(locale)
-                if locale_ == locale:
-                    dcl.append(
-                        ('title', 'none', f' language="{lng}"', title))
-                else:
-                    dcl.append(
-                        ('title', 'translated', f' language="{lng}"', title))
-
-        # Date issued
-        dcl.append(('date', 'issued', '', issue.year), )
-
-        # Date available
-        date_ = publication['datePublished']
-        dcl.append(('date', 'available', '', date_), )
-
-        # Author
-        authors = publication['authorsString']
-        authors_short = publication['authorsStringShort']
-        all_authors = authors if len(authors) else authors_short
-        if len(all_authors):
-            for author in all_authors.split(','):
-                dcl.append(('contributor', 'author', '', author.strip()), )
-
-        # language
-        dcl.append(('language', 'iso', '', lang), )
-
-        # Type
-        dc_type = issue.section['title']
-        for k, type_ in dc_type.items():
-            if type_:
-                dcl.append(('type', 'none', '', type_.lower()), )
-                break
-        else:
-            dcl.append(('type', 'none', '', self.type), )
-
-        # Abstract / copy right uri
-        galleys = publication['galleys']
-        for galley in galleys:
-            for locale, desc in galley['file']['description'].items():
-                lang = self.locale2isolang(locale)
-                if desc:
-                    dcl.append(
-                        ('description', 'abstract',
-                         f' language="{lang}"', desc), )
-
-        # Rights (License)
-        license_url = context.get('licenseUrl')
-        if license_url:
-            dcl.append(('rights', 'uri', '', license_url), )
-
-        # Issn
-        online_issn = context.get('onlineIssn')
-        if online_issn:
-            dcl.append(('identifier', 'issn', '', online_issn), )
-
-        self.write_xml_file(item_folder, dcl, filename)
+        for schema, dcl in schema_dict.items():
+            self.write_xml_file(item_folder, dcl, schema)
 
     @staticmethod
     def get_filename_from_cd(cd) -> str:
@@ -454,34 +304,20 @@ class ExportSAF:
         return filenames
 
     def export(self) -> None:
-        for journal in self.journals:
-            journal_name = journal.url_path
-            for num, issue in enumerate(journal.issues):
+        for context in self.contexts:
+            journal_name = context.url_path
+            for num, issue in enumerate(context.issues):
 
                 item_folder = Path(self.export_path)\
                     .joinpath(journal_name, f'item_{num:03d}',
-                              f'issue_{issue.issue_id}')
+                              f'issue_{issue.id}')
 
-                self.create_dc_file(item_folder, issue)
-                self.write_dc_meta_file(item_folder, journal, issue)
-
-                # write schema files
-                schemas = ['local', ]
-                for schema in schemas:
-                    method = f'write_{schema}_file'
-                    try:
-                        getattr(self, method)(item_folder, issue)
-                    except AttributeError as err:
-                        logger.error(
-                            f'method for schema "{method}" not found {err}')
-                        raise NotImplementedError(err)
-
-                # write collections file
+                self.write_meta_file(item_folder, issue)
                 self.write_collections_file(item_folder, self.collection)
 
                 # write contents file
                 filenames = self.download_galley(
-                    journal, item_folder, issue)
+                    context, item_folder, issue)
                 self.write_contents_file(item_folder, filenames)
 
     def write_zips(self) -> None:
@@ -499,9 +335,9 @@ class ExportSAF:
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                #if Path(zipfile).is_file():
-                #    shutil.rmtree(item)
-            #shutil.rmtree(journal)
+                if Path(zipfile).is_file():
+                    shutil.rmtree(item)
+            shutil.rmtree(journal)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
 
 
@@ -516,17 +352,20 @@ class TransferSAF:
         s = CP['scp']
         d = CP['docker']
         ds = CP['dspace']
+        e = CP['export']
         self.dry_run = CP['general'].getboolean('dry-run')
-        self.export_path = CP['export']['export_path']
+        self.export_path = e['export_path']
+        self.doi_prefix = e['doi_prefix']
         self.server = s['server']
         self.user = s['user']
         self.key_filename = s['key_filename']
         self.docker_user = d['user']
         self.docker_container = d['container']
-        self.mapfile_folder = ds['mapfile_folder']
         self.docker_dspace = ds['docker_dspace']
         self.eperson = ds['eperson']
-        self.source = ds['source']
+        self.docker_mapfile = ds['docker_mapfile']
+        self.docker_source = ds['docker_zipsource']
+        self.server_source = ds['server_zipsource']
         self.extra = ds['extra']
 
     def get_client(self) -> SSHClient:
@@ -559,51 +398,74 @@ class TransferSAF:
                 zip_files.append(zipfile)
         return zip_files
 
+    def transferobserver(self, transferred, total):
+        if transferred == total:
+            print(f'  transfer done (total: {total >> 20} Mb)')
+        self.observer_count += 1
+        if self.observer_count % 100 == 0:
+            print('.', end="")
+
     def transfer_files(self, files) -> None:
+        if len(files) == 0:
+            logger.info('no files found to transfer')
+            return
         client = self.get_client()
         with client.open_sftp() as ftp_client:
+            self.observer_count = 0
+
             for file_ in files:
-                ftp_client.put(file_, f'{file_.name}')
+                logger.info(f'transfer file {file_}')
+                logger.info(f"target: '{self.server_source}/{file_.name}")
+                ftp_client.put(
+                    file_, f'{self.server_source}/{file_.name}',
+                    callback=self.transferobserver)
         client.close()
-        logger.info('transfer done')
+        logger.info('transfer done...')
 
     def run_command(self, command) -> list:
         client = self.get_client()
         logger.info(f"\n{'-' * 100}\n{command}\n{'-' * 100}")
         lines = []
         stin, stdout, stderr = client.exec_command(command)
-        for line in stderr.read().splitlines():
-            logger.error(line)
+        for line in stderr.read().splitlines()[:1]:
+            logger.error(f"ERROR: {line}")
+            lines.append(f"ERROR: {line}")
         for line in stdout.read().splitlines():
+            logger.info(line)
             lines.append(line)
         return lines
 
     def delete_mapfile(self, mapfile):
-        logging.info("delete mapfile {mapfile}")
+        logger.info(f"delete mapfile {mapfile}")
         cmd = (
             f"docker exec --user {self.docker_user} {self.docker_container} "
-            f"rm {self.mapfile_folder}{mapfile}")
+            f"rm {self.docker_mapfile}{mapfile}")
         self.run_command(cmd)
 
-    def import_saf(self, zipfile):
+    def import_saf(self, zipfile) -> str:
         logging.info("start SAF import to dspace")
+        state = 'success'
         cmd = (
-            f"docker exec --user  {self.docker_user} {self.docker_container} "
+            f"docker exec --user {self.docker_user} {self.docker_container} "
             f"{self.docker_dspace} import --add "
             #  " --test "
             f"--eperson {self.eperson} "
-            f"--source {self.source} "
+            f"--source {self.docker_source} "
             f"--zip {zipfile} "
-            f"--mapfile {self.mapfile_folder}{zipfile}.map "
+            f"--mapfile {self.docker_mapfile}{zipfile}.map "
             f"{self.extra}")
         response = self.run_command(cmd)
         for line in response:
-            logger.info(line)
+            logger.debug(line)
+            if 'ERROR' in str(line) and state == 'success':
+                logging.warning(f'import {zipfile} fail: {line}')
+                state = f'fail: {line}'  # store first ERROR occu.
+        return state
 
     def get_handle(self, mapfile) -> str:
         cmd = (
             f"docker exec --user {self.docker_user} {self.docker_container} "
-            f"cat {self.mapfile_folder}{mapfile}")
+            f"cat {self.docker_mapfile}{mapfile}")
         result = self.run_command(cmd)
         handle = ''
         for rline in result:
@@ -617,8 +479,7 @@ class TransferSAF:
             f"{self.docker_dspace} doi-organiser "
             f"--list | grep {handle}")
         result = self.run_command(cmd)
-        dioprefix = "http://dx.doi.org/"
-
+        dioprefix = self.doi_prefix
         for rline in result:
             dioprefix += rline.split()[0].decode()
         return dioprefix
@@ -627,41 +488,56 @@ class TransferSAF:
         cmd = (f"docker exec --user {self.docker_user} dspace-test_dspace_1 "
                f"{self.docker_dspace} import --delete "
                f"--eperson {self.eperson} "
-               f"--mapfile {self.mapfile_folder}{mapfile} "
+               f"--mapfile {self.docker_mapfile}{mapfile} "
                "-disable_inheritance")
         self.run_command(cmd)
         logger.info(f'delete item with handel in {mapfile} done...')
 
-    def transfer(self):
+    def transfer(self) -> dict:
         zip_files = self.get_files()
         dry_run = self.dry_run
         self.transfer_files(zip_files)
-        for zipfile in ['hsg_issue_000.zip', ]:
+        zip_files_names = [f.name for f in zip_files]
+        result = {}
+        for zipfile in zip_files_names:
+            logger.info(f'****start import proccess for {zipfile}****')
+            action = {}
             mapfile = f"{zipfile}.map"
-            logger.info(
-                f"********************import {zipfile}**********************")
+            logger.info(f"delete old mapfile {mapfile}")
             self.delete_mapfile(mapfile)
-            self.import_saf(zipfile)
+            logger.info(f"import {zipfile}")
+            state = self.import_saf(zipfile)
+            action['import'] = state
+            if 'fail' in state:
+                logger.warning(f'import {zipfile} failed, try next one...')
+                result[zipfile] = action
+                continue
             handle = self.get_handle(mapfile)
+            action['handle'] = handle
             doi = self.get_doi(handle)
-            logger.info(f"DOI: -------> {doi}")
+            logger.info(f"DOI: {doi}")
+            action['doi'] = doi
             if dry_run:
                 self.delete_import(mapfile)
+            result[zipfile] = action
+        return result
 
 
 def main() -> None:
-    jp = JournalPoll()
-    jp._request_items()
-    jp.serialise_journals(2, 3)
-    jp._request_issues()
-    jp._request_contexts()
+    dp = DataPoll()
+    dp._request_publishers()
+    dp.serialise_data(2, 3)
+    dp._request_issues()
+    dp._request_contexts()
 
-    saf = ExportSAF(jp.journals)
+    saf = ExportSAF(dp.publishers)
     saf.export()
     saf.write_zips()
 
-    # transfer = TransferSAF()
-    # transfer.transfer()
+    transfer = TransferSAF()
+    result = transfer.transfer()
+    for k, v in result.items():
+        logger.info(f"{k}: {v}")
 
 
 if __name__ == "__main__":
