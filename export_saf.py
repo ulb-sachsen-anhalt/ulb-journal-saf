@@ -69,6 +69,7 @@ class ExportSAF:
     @staticmethod
     def write_collections_file(work_dir, collection) -> None:
         filename = 'collections'
+        Path(work_dir).mkdir(parents=True, exist_ok=True)
         pth = work_dir / filename
         with open(pth, 'w') as fh:
             fh.write(collection)
@@ -182,7 +183,7 @@ class ExportSAF:
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                if Path(zipfile).is_file():
-                    shutil.rmtree(item)
-            shutil.rmtree(context)
+                #if Path(zipfile).is_file():
+                #    shutil.rmtree(item)
+            #shutil.rmtree(context)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
