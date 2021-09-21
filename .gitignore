@@ -7,3 +7,5 @@ venv
 
 conf/config.ini
 
+*.pyc
+

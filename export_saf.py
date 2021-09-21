@@ -183,7 +183,7 @@ class ExportSAF:
                 size_abs += zipsize
                 logger.info(f'write zip file {name}.zip '
                             f'with {zipsize >> 20} Mb')
-                #if Path(zipfile).is_file():
-                #    shutil.rmtree(item)
-            #shutil.rmtree(context)
+                if Path(zipfile).is_file():
+                    shutil.rmtree(item)
+            shutil.rmtree(context)
         logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
