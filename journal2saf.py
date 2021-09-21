@@ -3,9 +3,9 @@
 import logging
 import argparse
 import warnings
-
 import requests
-
+from pprint import pprint
+from datetime import datetime
 from configparser import ConfigParser
 
 from export_saf import ExportSAF
@@ -26,6 +26,8 @@ logging.basicConfig(
 logger = logging.getLogger(__file__.split('/')[-1])
 
 CP = ConfigParser()
+# preserving capital letters with monkey patch
+CP.optionxform = lambda option: option
 CP.read(CONFIG)
 
 __all__ = ['Publisher', 'Issue', 'DataPoll']
@@ -165,9 +167,10 @@ class DataPoll():
 
 
 def main() -> None:
+    start = datetime.now()
     dp = DataPoll()
     dp._request_publishers()
-    dp.serialise_data(2, 3)
+    dp.serialise_data(3, 3)
     dp._request_issues()
     dp._request_contexts()
 
@@ -177,8 +180,9 @@ def main() -> None:
 
     transfer = TransferSAF(CP)
     result = transfer.transfer()
-    for k, v in result.items():
-        logger.info(f"{k}: {v}")
+    end = datetime.now()
+    pprint(result)
+    logger.info(f"time elapsed: {str(end-start).split('.')[0]}")
 
 
 if __name__ == "__main__":
