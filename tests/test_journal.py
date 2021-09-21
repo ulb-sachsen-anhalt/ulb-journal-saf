@@ -1,7 +1,5 @@
 """ Test functionality of journal2saf"""
 
-import configparser
-
 from journal2saf import DataPoll
 from tests.ressources import publishers
 from tests.ressources import issue, issues
@@ -59,6 +57,3 @@ def test_request_issues():
     dp._server_request = _server_request
     dp._request_issues()
     assert(len(dp.publishers)) == 1
-
-
-    
