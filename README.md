@@ -39,3 +39,19 @@ curl -k -X PUT -H "Content-Type: application/json" -d '{"urlRemote":"test"}' htt
 
 
 docker exec --user dspace dspace-test_dspace_1 /opt/dspace/repo/bin/dspace import --help
+
+Wenn nicht veröffentlicht geht curl -k -X PUT -H “Content-Type: application/json” -d '{“authorsString”:”http://test.de”}' https://publicdev.bibliothek.uni-halle.de/test/api/v1/submissions/2429/publications/2367?apiToken=e....
+
+
+Folgendes geht (getestet):
+
+curl -k -X PUT -H "Content-Type: application/json" -d '{"urlPath":"test"}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101/publications/100?apiToken=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IjZmOWQzYzIzYmRlYzVlN2JiN2MyNzJhMDFlNjA3N2I3Y2FkYmZlZjci.zq0PnIzXXJpPDhlrG3Xn2LDX_uez2aNJKeAw6gs1f6I
+
+hier einzusehen:
+https://publicdev.bibliothek.uni-halle.de/hdwiso/workflow/index/101/5#publication/issue
+
+
+geht auch:
+curl -k -X PUT -H "Content-Type: application/json" -d '{"type":{"de_DE":"test"}}' https://publicdev.bibliothek.uni-halle.de/hdwiso/api/v1/submissions/101/publications/100?apiToken=
+
+Wir müssen wohl ein PlugIn schreiben um die  *urlPublished* zu modifizieren nach dem dspace export
