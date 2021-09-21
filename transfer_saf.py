@@ -129,7 +129,7 @@ class TransferSAF:
         for line in response:
             logger.debug(line)
             if 'ERROR' in str(line) and state == 'success':
-                logging.warning(f'import {zipfile} fail: {line}')
+                logging.warning(f'import {zipfile} failed: {line}')
                 state = f'fail: {line}'  # store first ERROR occu.
         return state
 
