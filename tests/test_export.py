@@ -1,8 +1,8 @@
 """ Test functionality of journal2saf"""
 
 import configparser
+from zipfile import ZipFile
 from pathlib import Path
-from typing import Collection
 import pytest
 from journal2saf import ExportSAF, DataPoll
 from tests.ressources import publishers
@@ -10,6 +10,7 @@ from tests.ressources import issue, issues
 
 JURL = 'https://ojs.exampl.com'
 COLLECTION = '123456789/26132'
+
 
 @pytest.fixture(name="configuration")
 def fixture_configuration():
@@ -39,7 +40,8 @@ def _server_request(a):
 
 
 def download_galley(context, work_dir, issue):
-    return ['journal.pdf']
+    return ['journal.pdf', ]
+
 
 @pytest.fixture(name="contexts")
 def fixture_contexts():
@@ -51,13 +53,46 @@ def fixture_contexts():
     return(dp.publishers)
 
 
-def test_write_xml_file(tmpdir, contexts, configuration):
+def test_locale2isolang():
+    locale = ExportSAF.locale2isolang('de_DE')
+    assert locale == 'ger'
+    locale = ExportSAF.locale2isolang('en_EN')
+    assert locale == 'eng'
+
+
+def test_write_contents_file(tmpdir):
+    saf_files = ['testfile.foo', 'testfile.bar', ]
+    ExportSAF.write_contents_file(tmpdir, saf_files)
+    paths = list(Path(tmpdir).iterdir())
+    contents_file = paths[0]
+    assert contents_file.name == 'contents'
+    with open(contents_file) as fh:
+        name = fh.readline()
+        assert name.strip() in saf_files
+
+
+def test_write_collections_file(tmpdir):
+    collection = 'foo/bar'
+    ExportSAF.write_collections_file(tmpdir, collection)
+    paths = list(Path(tmpdir).iterdir())
+    collections_file = paths[0]
+    assert collections_file.name == 'collections'
+    with open(collections_file) as fh:
+        name = fh.readline()
+        assert name.strip() == collection
+
+
+def test_write_zip(tmpdir, contexts, configuration):
     configuration.set('export', 'export_path', str(tmpdir))
     saf = ExportSAF(contexts, configuration)
     saf.download_galley = download_galley
     saf.export()
     saf.write_zips()
-    p = Path(tmpdir).iterdir()
-    p = p
-    
-    
+    paths = Path(tmpdir).iterdir()
+    zipfiles = ['cicadina_item_000.zip', 'cicadina_item_001.zip']
+    contains = [
+        '', 'contents', 'dublin_core.xml', 'metadata_local.xml', 'collections']
+    for path in paths:
+        assert path.name in zipfiles
+        zipfile = ZipFile(path)
+        assert min([f.split('/')[-1] in contains for f in zipfile.namelist()])
