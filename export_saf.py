@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import re
 import shutil
 import logging
 import mimetypes
@@ -106,16 +105,6 @@ class ExportSAF:
 
         for schema, dcl in schema_dict.items():
             self.write_xml_file(item_folder, dcl, schema)
-
-    @staticmethod
-    def get_filename_from_cd(cd) -> str:
-        """Get filename from content-disposition"""
-        if not cd:
-            return None
-        fname = re.findall('filename=(.+)', cd)
-        if len(fname) == 0:
-            return None
-        return fname[0]
 
     def download_galley(self, context, work_dir, issue) -> list:
         publications = issue.publications
