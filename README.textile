@@ -1,16 +1,24 @@
-# Harvesting OJS/OMP Journals and Books
+h1. Harvesting _OJS_ Journals and _OMP_ Books
+
+h2. Was macht _ulb-journal-saf_
 
 
-Das Script _journal2saf.py_ ruft von einem, im Konfigurationsfile angegebenen Journalserver, alle relevanten Daten, von bereits pulizierten Journalen/Büchern ab.
+Das Script _journal2saf.py_ ruft von einem konfigurierbaren Server alle relevanten Daten von bereits pulizierten Journalen/Büchern ab.
+Das Python-Script nutzt dazu das API des Monograph~/Journalservers.
+Relevante Daten sind hier die zentrale PDF Datei und die Metadaten zum Buch bzw. Journal.
+Die aggregierten Daten werden in SAF Archivdateien pro Buch~ bzw. Journalausgabe gespeichert.
+*"SAF":(https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) Archive werden vom Dokumentenserver DSpace als Importformat akzeptiert.*
+Die Übertragung zum Dspace Server und der Import der SAF Archive sind im Projekt integriert.
+Alternativ können die Dateien auch in einem Austauschordner abgelegt werden, der für Dspace erreichbar ist.
+Per cronjob importiert DSpace die Daten und hintelegt eine aktuelle (handle:doi)-Paar Liste.
+Diese (handle:doi)-Paar Liste nutzt py2saf, um den DOI im OJS/OMP einzutragen.
 
 
-Aus diesen Daten werden [SAF Dateien](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt, die von einem D_Space Server regelmäßig importiert werden.
-
-## Ziel:
+h3. Ziel:
 
 Automatische Veröffentlichung der Publikationen im D-Space Repositorium.
 
-## TODO:
+h3. TODO:
 
 Bidirektionaler Datenaustausch zwischen OJS/OMP mit dem D-Space Server.
 Hat der D-Space Server die Daten importiert, sollte er einen [DOI](https://de.wikipedia.org/wiki/Digital_Object_Identifier) anfordern und ihn auf geeignete Weise an die Journalserver zurückliefern.
