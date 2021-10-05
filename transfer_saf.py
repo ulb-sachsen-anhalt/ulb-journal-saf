@@ -156,11 +156,12 @@ class TransferSAF:
         return dioprefix
 
     def delete_import(self, mapfile) -> None:
-        cmd = (f"docker exec --user {self.docker_user} dspace-test_dspace_1 "
-               f"{self.docker_dspace} import --delete "
-               f"--eperson {self.eperson} "
-               f"--mapfile {self.docker_mapfile}{mapfile} "
-               "-disable_inheritance")
+        cmd = (
+            f"docker exec --user {self.docker_user} {self.docker_container} "
+            f"{self.docker_dspace} import --delete "
+            f"--eperson {self.eperson} "
+            f"--mapfile {self.docker_mapfile}{mapfile} "
+            "-disable_inheritance")
         self.run_command(cmd)
         logger.info(f'delete item with handel in {mapfile} done...')
 
