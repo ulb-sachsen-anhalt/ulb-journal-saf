@@ -159,6 +159,9 @@ class ExportSAF:
 
     def write_zips(self) -> None:
         export_pth = Path(self.export_path)
+        if not export_pth.is_dir():
+            logger.info(f"Path not found -> '{export_pth}', stop export")
+            exit()
         contexts = [d for d in export_pth.iterdir() if d.is_dir()]
         size_abs = 0
         for context in contexts:
