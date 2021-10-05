@@ -17,6 +17,7 @@
 [meta]
     # some values are direct available:
     # locale, language, pageend, pagestart
+    # provide fixed values in quotation mark: "free"
     dc.identifier.external = "ojs" + str(issue.id)
     dc.description.abstract = context.description[locale]
     dc.date.issued = issue.year
