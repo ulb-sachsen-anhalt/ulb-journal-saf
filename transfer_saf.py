@@ -102,7 +102,7 @@ class TransferSAF:
             logger.error(f"ERROR: {line}")
             lines.append(f"ERROR: {line}")
         for line in stdout.read().splitlines():
-            logger.info(line)
+            logger.info(f'command result: {line}')
             lines.append(line)
         return lines
 
@@ -141,7 +141,7 @@ class TransferSAF:
         handle = ''
         for rline in result:
             handle = rline.split()[-1].decode()
-        logger.info(f'handle -------> {handle}')
+        logger.info(f'handle -------> {handle} extract form {rline}')
         return handle
 
     def get_doi(self, handle) -> str:
