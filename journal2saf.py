@@ -170,7 +170,7 @@ def main() -> None:
     start = datetime.now()
     dp = DataPoll()
     dp._request_publishers()
-    dp.serialise_data(3, 3)
+    dp.serialise_data(2, 3)
     dp._request_issues()
     dp._request_contexts()
 
