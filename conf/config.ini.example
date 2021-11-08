@@ -27,7 +27,7 @@
 
     # todo: dc.title.language gibt es nicht
     # dc.title.language = language
-    dc.type = "article"
+    dc.type = "Article"
     dc.rights.uri = context.licenseUrl
     dc.language.iso = language
 
@@ -38,12 +38,9 @@
     local.bibliographicCitation.pagestart = pagestart
     local.bibliographicCitation.pageend = pageend
     
-    # TODO: number in dspace anlegen! 
-    #local.bibliographicCitation.number = issue.number
-    # TODO: volume in dspace anlegen! 
-    #local.bibliographicCitation.volume = issue.volume
-    # TODO: journaltitle in dspace anlegen! 
-    #local.bibliographicCitation.journaltitle = context.name[locale]
+    local.bibliographicCitation.volume = issue.number
+    local.bibliographicCitation.issue = issue.volume
+    local.bibliographicCitation.journaltitle = context.name[locale]
 
 [scp]
     # dspace server
