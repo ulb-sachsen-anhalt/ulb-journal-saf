@@ -5,19 +5,18 @@
     journal_server = <https://ojs.example.com>
     # 	Monograph / Article
     type = Article
-    # delete dspace import afterwards
-    dry-run = true
 
 
 [export]
     export_path = ./export
     collection = 123456789/26132
-    doi_prefix = http://dx.doi.org/
+    # doi_prefix = http://dx.doi.org/
 
 [meta]
     # some values are direct available:
     # locale, language, pageend, pagestart
     # provide fixed values in quotation mark: "free"
+    dc.title = context.name[locale]
     dc.identifier.external = "ojs" + str(issue.id)
     dc.description.abstract = context.description[locale]
     dc.date.issued = issue.year
@@ -55,10 +54,11 @@
 
 [dspace]
     # dspace executable
-    eperson = omp@example.com
-    docker_dspace = /opt/dspace/repo/bin/dspace
-    docker_mapfile = /opt/dspace/repo/infrastructure/ojs_omp/map/
-    docker_zipsource = /opt/dspace/repo/infrastructure/ojs_omp/source/
+    # eperson = omp@example.com
+    # docker_dspace = /opt/dspace/repo/bin/dspace
+    # docker_mapfile = /opt/dspace/repo/infrastructure/ojs_omp/map/
+    # docker_zipsource = /opt/dspace/repo/infrastructure/ojs_omp/source/
     server_zipsource = /opt/dspace-test/volumes/infrastructure/ojs_omp/source/
-    extra = --disable_inheritance
+    server_doifiles = /opt/dspace-test/volumes/infrastructure/ojs_omp/doi/
+    # extra = --disable_inheritance
 
