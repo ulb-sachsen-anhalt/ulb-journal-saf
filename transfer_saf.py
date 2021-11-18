@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+##############################################################
+# this module is legacy stuff and not in use
+# calling docker commands is not intended for security reason
+# so Dspace should manage this on its own
+##############################################################
+
 import logging
 import paramiko
 from pathlib import Path
@@ -133,15 +139,18 @@ class TransferSAF:
                 state = f'fail: {line}'  # store first ERROR occu.
         return state
 
-    def get_handle(self, mapfile) -> str:
+    def get_handle(self, mapfile) -> any:
         cmd = (
             f"docker exec --user {self.docker_user} {self.docker_container} "
             f"cat {self.docker_mapfile}{mapfile}")
         result = self.run_command(cmd)
-        handle = ''
-        for rline in result:
-            handle = rline.split()[-1].decode()
-        logger.info(f'handle -------> {handle} extract form {rline}')
+        handle = None
+        if result:
+            for rline in result:
+                handle = rline.split()[-1].decode()
+            logger.info(f'handle -------> {handle} extract form {rline}')
+        else:
+            logger.warning('no handle extract, something wrong?')
         return handle
 
     def get_doi(self, handle) -> str:
@@ -186,9 +195,12 @@ class TransferSAF:
                 continue
             handle = self.get_handle(mapfile)
             action['handle'] = handle
-            doi = self.get_doi(handle)
-            logger.info(f"DOI: {doi}")
-            action['doi'] = doi
+            if handle:
+                doi = self.get_doi(handle)
+                logger.info(f"DOI: {doi}")
+                action['doi'] = doi
+            else:
+                logger.info("DOI extraction failed")
             if dry_run:
                 self.delete_import(mapfile)
             result[zipfile] = action
