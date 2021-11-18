@@ -4,12 +4,13 @@ import logging
 import argparse
 import warnings
 import requests
-from pprint import pprint
+import pathlib
 from datetime import datetime
 from configparser import ConfigParser
 
 from export_saf import ExportSAF
-from transfer_saf import TransferSAF
+from copy_saf import CopySAF
+from retrieve_doi import RetrievDoi
 
 warnings.filterwarnings(
     'ignore', message='Unverified HTTPS request')
@@ -28,7 +29,7 @@ logger = logging.getLogger(__file__.split('/')[-1])
 CP = ConfigParser()
 # preserving capital letters with monkey patch
 CP.optionxform = lambda option: option
-CP.read(CONFIG)
+
 
 __all__ = ['Publisher', 'Issue', 'DataPoll']
 
@@ -166,22 +167,39 @@ class DataPoll():
                     publisher.issues.append(issue_ob)
 
 
-def main() -> None:
-    start = datetime.now()
+def data_poll() -> DataPoll:
     dp = DataPoll()
     dp._request_publishers()
     dp.serialise_data(2, 3)
     dp._request_issues()
     dp._request_contexts()
+    return dp
 
-    saf = ExportSAF(dp.publishers, CP)
-    saf.export()
-    saf.write_zips()
 
-    transfer = TransferSAF(CP)
-    result = transfer.transfer()
+def export_saf(dp: DataPoll) -> None:
+    exportsaf = ExportSAF(dp.publishers, CP)
+    exportsaf.export()
+    exportsaf.write_zips()
+
+
+def copy_saf(CP: ConfigParser) -> None:
+    copysaf = CopySAF(CP)
+    copysaf.copy()
+
+
+def retrieve_doi(CP: ConfigParser) -> None:
+    retrievedoi = RetrievDoi(CP)
+    retrievedoi.retrieve_files()
+
+
+def main() -> None:
+    start = datetime.now()
+    # datapoll = data_poll()
+    # export_saf(datapoll)
+    # copy_saf(CP)
+    retrieve_doi(CP)
+
     end = datetime.now()
-    pprint(result)
     logger.info(f"time elapsed: {str(end-start).split('.')[0]}")
 
 
@@ -197,8 +215,18 @@ if __name__ == "__main__":
         default=CONFIG,
         help="path to configuration file")
 
-    args = parser.parse_args()
-    if args.verbose:
+    args = vars(parser.parse_args())
+    conf = args['c']
+    now = str(datetime.now())
+    if not pathlib.Path(conf).exists():
+        print(
+            f"{now} [ERROR] Missing config '{conf}'! Halt execution!")
+        exit(1)
+    else:
+        print(f"{now} [INFO] use configuration file at {conf}")
+    CP.read(conf)
+
+    if args['verbose']:
         logger.setLevel(level=logging.DEBUG)
 
     main()
