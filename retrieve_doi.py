@@ -2,7 +2,6 @@
 
 import logging
 import paramiko
-from pathlib import Path
 from paramiko.client import SSHClient
 
 logging.basicConfig(
@@ -12,7 +11,7 @@ logging.basicConfig(
 logger = logging.getLogger(__file__.split('/')[-1])
 
 
-class RetrievDoi:
+class RetrieveDOI:
     """Retrieve DOI containing files form dspace server"""
 
     def __init__(self, configparser) -> None:
@@ -54,16 +53,20 @@ class RetrievDoi:
 
     def retrieve_files(self) -> None:
         client = self.get_client()
-        with client.open_sftp() as ftp_client:
-            # logger.info(f'transfer file {file_}')
-            # logger.info(f"target: '{self.server_source}/{file_.name}")
-            export_path = self.export_path
-            doifiles = ftp_client.listdir(self.doi_path)
-            for doifile in doifiles:
-                logger.info(f"got file --> {doifile}")
-                ftp_client.get(f"{self.doi_path}/{doifile}", f"{export_path}/{doifile}")
-        client.close()
-        logger.info('copy done...')
+        if client is not None:
+            with client.open_sftp() as ftp_client:
+                # logger.info(f'transfer file {file_}')
+                # logger.info(f"target: '{self.server_source}/{file_.name}")
+                export_path = self.export_path
+                doifiles = ftp_client.listdir(self.doi_path)
+                if not doifiles:
+                    logger.info("no new doi files")
+                for doifile in doifiles:
+                    ftp_client.get(
+                        f"{self.doi_path}/{doifile}", f"{export_path}/{doifile}")
+                    logger.info(f"got file --> {doifile}")    
+            client.close()
+            logger.info('copy done...')
 
     def copy(self) -> dict:
         saf_files = self.get_files()
