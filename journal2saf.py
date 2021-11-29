@@ -10,7 +10,7 @@ from configparser import ConfigParser
 
 from export_saf import ExportSAF
 from copy_saf import CopySAF
-from retrieve_doi import RetrievDoi
+from retrieve_doi import RetrieveDOI
 
 warnings.filterwarnings(
     'ignore', message='Unverified HTTPS request')
@@ -188,15 +188,15 @@ def copy_saf(CP: ConfigParser) -> None:
 
 
 def retrieve_doi(CP: ConfigParser) -> None:
-    retrievedoi = RetrievDoi(CP)
+    retrievedoi = RetrieveDOI(CP)
     retrievedoi.retrieve_files()
 
 
 def main() -> None:
     start = datetime.now()
-    # datapoll = data_poll()
-    # export_saf(datapoll)
-    # copy_saf(CP)
+    datapoll = data_poll()
+    export_saf(datapoll)
+    copy_saf(CP)
     retrieve_doi(CP)
 
     end = datetime.now()
