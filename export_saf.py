@@ -117,6 +117,7 @@ class ExportSAF:
             galley_id = galley['id']
             mime_type = galley['file']['mimetype']
             submission_id = galley['file']['submissionId']
+            publication_id = galley['publicationId']
             extension = mimetypes.guess_extension(mime_type)
             submission_file_id = galley['submissionFileId']
             url = "{}/article/download/{}/{}/{}".format(
@@ -127,7 +128,7 @@ class ExportSAF:
                 logger.error(f'error download file code:{status_code} {url}')
                 continue
             filename = '{}_{}_{}{}'.format(
-                context.url_path, submission_id, submission_file_id, extension)
+                context.url_path, publication_id, submission_file_id, extension)
 
             export_path = work_dir / filename
 
@@ -144,10 +145,11 @@ class ExportSAF:
         for context in self.contexts:
             context_name = context.url_path
             for num, issue in enumerate(context.issues):
-
+                submission_file_id = issue.galley['submissionFileId']
+                publication_id = issue.galley['publicationId']
                 item_folder = Path(self.export_path)\
-                    .joinpath(context_name, f'item_{num:03d}',
-                              f'issue_{issue.id}')
+                    .joinpath(context_name, f'publication_id_{publication_id}',
+                              f'submission_file_id_{submission_file_id}')
 
                 self.write_meta_file(item_folder, issue)
                 self.write_collections_file(item_folder, self.collection)
@@ -168,7 +170,12 @@ class ExportSAF:
             items = [i for i in context.iterdir() if i.is_dir()]
             for item in items:
                 logger.info(f'zip folder at {item}')
-                name = f'{context.name}_{item.name}'
+                submission_file_id = list(item.iterdir())[0].name
+                name = f'{context.name}_{item.name}_{submission_file_id}'
+                alredy_done = Path(export_pth / (name+'.done'))
+                if alredy_done.is_file():
+                    logger.info(f'{export_pth}/{name}.zip is alredy processed, skip...')
+                    continue
                 zipfile = shutil.make_archive(
                     export_pth / name, 'zip', item)
                 zipsize = Path(zipfile).stat().st_size
