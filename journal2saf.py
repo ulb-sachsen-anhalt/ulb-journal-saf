@@ -11,6 +11,7 @@ from configparser import ConfigParser
 from export_saf import ExportSAF
 from copy_saf import CopySAF
 from retrieve_doi import RetrieveDOI
+from write_remote_url import WriteRemoteUrl
 
 warnings.filterwarnings(
     'ignore', message='Unverified HTTPS request')
@@ -80,12 +81,12 @@ class DataPoll():
        of issues and publication objects
     """
 
-    def __init__(self) -> None:
+    def __init__(self, configparser) -> None:
         self.publishers = []
-        self.load_config()
+        self.load_config(configparser)
 
-    def load_config(self) -> None:
-        g = CP['general']
+    def load_config(self, configparser) -> None:
+        g = configparser['general']
         self.endpoint_contexts = g['endpoint_contexts']
         self.endpoint_issues = g['endpoint_issues']
         self.journal_server = f"{g['journal_server']}/"
@@ -168,7 +169,7 @@ class DataPoll():
 
 
 def data_poll() -> DataPoll:
-    dp = DataPoll()
+    dp = DataPoll(CP)
     dp._request_publishers()
     dp.serialise_data(2, 3)
     dp._request_issues()
@@ -192,15 +193,21 @@ def retrieve_doi(CP: ConfigParser) -> None:
     retrievedoi.retrieve_files()
 
 
+def write_remote_url(CP: ConfigParser) -> None:
+    writeremoteurl = WriteRemoteUrl(CP)
+    writeremoteurl.write()
+
+
 def main() -> None:
     start = datetime.now()
     datapoll = data_poll()
     export_saf(datapoll)
     copy_saf(CP)
     retrieve_doi(CP)
+    write_remote_url(CP)
 
     end = datetime.now()
-    logger.info(f"time elapsed: {str(end-start).split('.')[0]}")
+    logger.info(f"Elapsed time: {str(end-start).split('.')[0]}")
 
 
 if __name__ == "__main__":
