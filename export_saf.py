@@ -114,6 +114,11 @@ class ExportSAF:
 
         filenames = []
         for galley in galleys:
+            if galley['file'] is None:
+                logger.warning(
+                    'no file in galley with '
+                    f'publication_id {galley["publicationId"]}')
+                continue
             galley_id = galley['id']
             mime_type = galley['file']['mimetype']
             submission_id = galley['file']['submissionId']
@@ -129,7 +134,8 @@ class ExportSAF:
                 logger.error(f'error download file code:{status_code} {url}')
                 continue
             filename = '{}_{}_{}{}'.format(
-                context.url_path, publication_id, submission_file_id, extension)
+                context.url_path, publication_id,
+                submission_file_id, extension)
 
             export_path = work_dir / filename
 
@@ -146,6 +152,11 @@ class ExportSAF:
         for context in self.contexts:
             context_name = context.url_path
             for num, issue in enumerate(context.issues):
+                if not issue.galley:
+                    logger.warning(
+                        'no galley found for publisher_id '
+                        f'{issue.parent.publisher_id}')
+                    continue
                 submission_file_id = issue.galley['submissionFileId']
                 publication_id = issue.galley['publicationId']
                 item_folder = Path(self.export_path)\
