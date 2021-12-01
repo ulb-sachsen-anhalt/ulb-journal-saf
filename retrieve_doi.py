@@ -2,6 +2,7 @@
 
 import logging
 import paramiko
+import warnings
 from paramiko.client import SSHClient
 
 logging.basicConfig(
@@ -9,6 +10,9 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
 
 logger = logging.getLogger(__file__.split('/')[-1])
+
+warnings.filterwarnings(
+    'ignore', message='Unverified HTTPS request')
 
 
 class RetrieveDOI:
@@ -27,7 +31,6 @@ class RetrieveDOI:
         # scp needed
         self.server = s['server']
         self.user = s['user']
-
         self.key_filename = s['key_filename']
 
     def get_client(self) -> SSHClient:
@@ -55,16 +58,16 @@ class RetrieveDOI:
         client = self.get_client()
         if client is not None:
             with client.open_sftp() as ftp_client:
-                # logger.info(f'transfer file {file_}')
-                # logger.info(f"target: '{self.server_source}/{file_.name}")
                 export_path = self.export_path
                 doifiles = ftp_client.listdir(self.doi_path)
                 if not doifiles:
                     logger.info("no new doi files")
                 for doifile in doifiles:
                     ftp_client.get(
-                        f"{self.doi_path}/{doifile}", f"{export_path}/{doifile}")
-                    logger.info(f"got file --> {doifile}")    
+                        f"{self.doi_path}/{doifile}",
+                        f"{export_path}/{doifile}"
+                        )
+                    logger.info(f"got file --> {doifile}")
             client.close()
             logger.info('copy done...')
 
