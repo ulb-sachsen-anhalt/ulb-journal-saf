@@ -122,6 +122,7 @@ class ExportSAF:
             submission_file_id = galley['submissionFileId']
             url = "{}/article/download/{}/{}/{}".format(
                 context_url, submission_id, galley_id, submission_file_id)
+            logger.info(f'download file: {url}')
             response = requests.get(url, verify=False)
             status_code = response.status_code
             if status_code != 200:
@@ -172,9 +173,10 @@ class ExportSAF:
                 logger.info(f'zip folder at {item}')
                 submission_file_id = list(item.iterdir())[0].name
                 name = f'{context.name}_{item.name}_{submission_file_id}'
-                alredy_done = Path(export_pth / (name+'.done'))
+                alredy_done = Path(export_pth / (name+'.zip.done'))
                 if alredy_done.is_file():
-                    logger.info(f'{export_pth}/{name}.zip is alredy processed, skip...')
+                    logger.info(
+                        f'{alredy_done} is alredy processed, skip...')
                     continue
                 zipfile = shutil.make_archive(
                     export_pth / name, 'zip', item)
