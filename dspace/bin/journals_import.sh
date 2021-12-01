@@ -4,7 +4,9 @@
 
 echo "------------------------------------------------------------------------------"
 echo "Version 0.2.0"
-
+####
+#docker exec --user dspace  dspace2_dspace_1 /opt/dspace/repo/bin/dspace import --delete --eperson axel.bauer@bibliothek.uni-halle.de --mapfile
+####
 dspace="/opt/dspace/repo/bin/dspace"
 safs="/opt/dspace/repo/infrastructure/ojs_omp/source/"
 maps="/opt/dspace/repo/infrastructure/ojs_omp/map/"
@@ -28,7 +30,10 @@ function get_doi() {
         echo got Handle: "$HANDLE"
         DOI=$(/opt/dspace/repo/bin/dspace doi-organiser --list | grep "$HANDLE")
         echo "die doi Zeile ist ${DOI}"
-        IFS=' ' read -r -a doiline <<< "${DOI}"
+        # "set Internal Field Separator to ' '".
+        IFS=' '
+        # read part by part into array 'doiline' 
+        read -r -a doiline <<< "${DOI}"
         doi=${doiline[0]}
         echo "extracted DOI:$doi"
         write_doi "$mapfilename".doi "$doi"
@@ -62,6 +67,8 @@ function import_saf() {
         $cmd
 }
 
+
+# das kann evtl. wieder raus, wenn dspace den import übernimmt 
 for saf in "$safs"/*
     do
         safname=$(basename -- "$saf")
