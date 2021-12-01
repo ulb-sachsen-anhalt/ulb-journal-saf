@@ -56,8 +56,8 @@ class CopySAF:
         export_path = Path(self.export_path)
         saf_files = []
         if export_path.exists():
-            for zip in [z for z in export_path.iterdir()
-                        if z.suffix == '.zip']:
+            export = Path(self.export_path).glob('*.zip')
+            for zip in export:
                 zipfile = zip.absolute()
                 saf_files.append(zipfile)
         return saf_files
@@ -71,23 +71,28 @@ class CopySAF:
 
     def copy_files(self, files: list) -> None:
         if len(files) == 0:
-            logger.info('no files found to copy')
+            logger.info('no SAF files found to copy')
             return
         client = self.get_client()
         if client is not None:
             with client.open_sftp() as ftp_client:
                 self.observer_count = 0
-
                 for file_ in files:
                     logger.info(f'transfer file {file_}')
                     logger.info(f"target: '{self.server_source}/{file_.name}")
                     ftp_client.put(
                         file_, f'{self.server_source}/{file_.name}',
                         callback=self.transferobserver)
-                    file_.rename(file_.with_suffix('.done'))
+
             client.close()
-            logger.info('copy done...')
+
+    def rename_files(self, files: list) -> None:
+        for file_ in files:
+            done = file_.with_suffix(file_.suffix + '.done')
+            file_.rename(done)
+            logger.info(f'rename file {file_} to {done}')
 
     def copy(self) -> dict:
         saf_files = self.get_files()
         self.copy_files(saf_files)
+        self.rename_files(saf_files)
