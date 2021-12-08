@@ -83,9 +83,9 @@ class CopySAF:
                     ftp_client.put(
                         file_, f'{self.server_source}/{file_.name}',
                         callback=self.transferobserver)
-                done = file_.with_suffix(file_.suffix + '.done')
-                file_.rename(done)
-                logger.info(f'rename file {file_} to {done}')        
+                    done = file_.with_suffix(file_.suffix + '.done')
+                    file_.rename(done)
+                    logger.info(f'rename file {file_} to {done}')
             client.close()
 
     def copy(self) -> dict:
