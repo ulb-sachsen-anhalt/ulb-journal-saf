@@ -7,6 +7,8 @@ import pycountry
 from pathlib import Path
 
 import requests
+from bs4 import BeautifulSoup
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -74,15 +76,19 @@ class ExportSAF:
             fh.write(collection)
 
     def write_meta_file(self, item_folder, issue) -> None:
-        context = issue.parent
         locale = issue.locale
         schema_dict = {}
-
         # eval-call will use following variables
+        context = issue.parent
         language = self.locale2isolang(locale)
-        pagestart = issue.publication['pages']
-        pageend = issue.publication['pages']
-        logger.debug(f'{context} {language} {pagestart} {pageend}')
+        logger.debug(f"{context} {language}")
+        pages = issue.publication['pages']
+        pagestart = pageend = pages
+        try:
+            pagestart, pageend = pages.split('-')
+        except (ValueError, AttributeError):
+            logger.error(
+                f"cannot split pages ({pages}) into start and end")
 
         for k, v in self.meta.items():
             meta_tpl = k.split('.')
@@ -91,13 +97,20 @@ class ExportSAF:
                 meta_tpl.append('', )
 
             if v.startswith('"') and v.endswith('"'):
-                # fixed value read from config
+                # static value, read from config as string
                 value = v[1:-1]
             else:
                 value = eval(v)
+
+                if isinstance(value, dict):
+                    if locale in value:
+                        value = value[locale]
+
                 if isinstance(value, str) and\
-                        (value.count('<') > 0 or value.count('>')):
-                    value = f'<![CDATA[{value}]]>'
+                        (value.count('<') and value.count('>')):
+                    soup = BeautifulSoup(value, features="html.parser")
+                    value = soup.get_text()
+                    value = value.replace('& ', '&amp; ')
 
             if value:
                 schema_dict.setdefault(
@@ -107,8 +120,7 @@ class ExportSAF:
             self.write_xml_file(item_folder, dcl, schema)
 
     def download_galley(self, context, work_dir, issue) -> list:
-        publications = issue.publications
-        publication = publications[0]
+        publication = issue.publication
         context_url = context.url
         galleys = publication['galleys']
 
@@ -152,7 +164,7 @@ class ExportSAF:
         for context in self.contexts:
             context_name = context.url_path
             for num, issue in enumerate(context.issues):
-                if not issue.galley:
+                if not (hasattr(issue, 'galley') and issue.galley):
                     logger.warning(
                         'no galley found for publisher_id '
                         f'{issue.parent.publisher_id}')
@@ -167,8 +179,7 @@ class ExportSAF:
                 self.write_collections_file(item_folder, self.collection)
 
                 # write contents file
-                filenames = self.download_galley(
-                    context, item_folder, issue)
+                filenames = self.download_galley(context, item_folder, issue)
                 self.write_contents_file(item_folder, filenames)
 
     def write_zips(self) -> None:
