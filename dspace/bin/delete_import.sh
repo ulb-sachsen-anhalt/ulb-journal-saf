@@ -9,7 +9,7 @@ for mf in "$mapsvolume"/*
    do
      mapfilename=$(basename "$mf")
      mapcontainer=$mapscontainer/$mapfilename
-     echo delete Item with Handel in "$mapcontainer"
+     echo delete Item with Handel in "$mapcontainer" --> "$mapfilename"
      docker exec --user dspace $container $dspace import --delete --eperson axel.bauer@bibliothek.uni-halle.de --mapfile "$mapcontainer"
    done
 

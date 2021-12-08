@@ -10,36 +10,7 @@
 [export]
     export_path = ./export
     collection = 123456789/26132
-    # doi_prefix = http://dx.doi.org/
-
-[meta]
-    # some values are direct available:
-    # locale, language, pageend, pagestart
-    # provide fixed values in quotation mark: "free"
-    dc.title = context.name[locale]
-    dc.identifier.external = "ojs" + str(issue.id)
-    dc.description.abstract = context.description[locale]
-    dc.date.issued = issue.year
-    dc.date.available = issue.datePublished
-    dc.identifier.issn = context.onlineIssn
-    dc.contributor.author = issue.publication['authorsStringShort']
-
-    # todo: dc.title.language gibt es nicht
-    # dc.title.language = language
-    dc.type = "Article"
-    dc.rights.uri = context.licenseUrl
-    dc.language.iso = language
-
-    # dc-identifier-external-prefix = ojs
-    local.accessrights.dnb = "free"
-    local.openaccess = "true"
-
-    local.bibliographicCitation.pagestart = pagestart
-    local.bibliographicCitation.pageend = pageend
-    
-    local.bibliographicCitation.volume = issue.number
-    local.bibliographicCitation.issue = issue.volume
-    local.bibliographicCitation.journaltitle = context.name[locale]
+    doi_prefix = http://dx.doi.org/
 
 [scp]
     # dspace server

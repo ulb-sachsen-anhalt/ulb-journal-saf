@@ -6,6 +6,8 @@ echo "--------------------------------------------------------------------------
 echo "Version 0.2.0"
 ####
 #docker exec --user dspace  dspace2_dspace_1 /opt/dspace/repo/bin/dspace import --delete --eperson axel.bauer@bibliothek.uni-halle.de --mapfile
+#  run this script form host cli:
+#  docker exec -it  dspace2_dspace_1 /opt/dspace/repo/bin/journals_import.sh
 ####
 dspace="/opt/dspace/repo/bin/dspace"
 safs="/opt/dspace/repo/infrastructure/ojs_omp/source/"
@@ -63,7 +65,7 @@ function import_saf() {
         --zip $saffile \
         --mapfile $maps/$saffile.map\
         --disable_inheritance"
-        echo $cmd
+        echo "$cmd"
         $cmd
 }
 
