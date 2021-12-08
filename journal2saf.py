@@ -19,6 +19,7 @@ warnings.filterwarnings(
 ###############################################################
 STATUS_PUBLISHED = 3
 CONFIG = "conf/config.ini"
+CONFIG_META = "conf/config_meta.ini"
 ###############################################################
 
 logging.basicConfig(
@@ -59,14 +60,6 @@ class Issue():
     def __init__(self, data, parent) -> None:
         self._data = data
         self.parent = parent   # journal object
-        for article in data['articles']:
-            self.locale = article['locale']
-        for section in data['sections']:
-            self.section = section
-        self.publications = data['articles'][0]['publications']
-        self.publication = self.publications[0]
-        self.galleys = data['articles'][0]['publications'][0]['galleys']
-        self.galley = self.galleys[0] if self.galleys else []
 
     def __getattr__(self, name: str) -> any:
         if name in self._data:
@@ -120,12 +113,12 @@ class DataPoll():
             f"build contexts REST call: {rest_call}")
         return rest_call
 
-    def rest_call_issues(self, jounal_url, issue_id=None) -> str:
+    def rest_call_issues(self, journal_url, issue_id=None) -> str:
         """call one or all issue(s) from journal"""
 
         issue_id = f'/{issue_id}' if issue_id else ''
         rest_call = ''.join([
-            jounal_url, self.endpoint_issues, issue_id])
+            journal_url, self.endpoint_issues, issue_id])
         logger.debug(
             "build issues REST call: {rest_call}")
         return rest_call
@@ -145,10 +138,11 @@ class DataPoll():
     def _request_contexts(self) -> None:
         for publisher in self.publishers:
             id_ = publisher.id
-            name = publisher.url_path
-            query_context = self.rest_call_context(publisher.url_path, id_)
+            publisher_url = publisher.url_path
+            query_context = self.rest_call_context(publisher_url, id_)
             context_dict = self._server_request(query_context)
-            logger.info(f'got {len(context_dict)} keys/values for {name}')
+            logger.info(
+                f'got {len(context_dict)} keys/values for {publisher_url}')
             publisher._data.update(context_dict)
 
     def _request_issues(self) -> None:
@@ -158,20 +152,47 @@ class DataPoll():
                         f' {query_issues}')
             issues_dict = self._server_request(query_issues)
             logger.info(f'receive {issues_dict.get("itemsMax", 0)} issues')
+
             for issue in issues_dict['items']:
-                issue_data = issue
-                issue_query = self.rest_call_issues(
-                    publisher.url, issue['id'])
-                issue_data.update(self._server_request(issue_query))
-                if len(issue_data['articles']) > 0:
-                    issue_ob = Issue(issue_data, publisher)
+                issue_data = self._server_request(issue['_href'])
+
+                for article in issue_data['articles']:
+                    status = article['status']
+                    if status != 3:  # 3 means "published"
+                        logger.info(
+                            f"article is not yet published: {status},"
+                            " continue")
+                        continue
+                    issue_data['article'] = article
+                    for publication in article['publications']:
+                        issue_data['publication'] = publication
+                        # hier nach den datails fragen
+                        publ_href = publication['_href']
+                        publication_detail = self._server_request(publ_href)
+                        issue_data.update(publication_detail)
+                        for index, galley in enumerate(publication['galleys']):
+                            remote_url = galley['urlRemote']
+                            if remote_url:
+                                logger.info(
+                                    f"remote_url already set for {publ_href}"
+                                    " ({remote_url}), continue")
+                                # the galley['urlRemote'] is already set!
+                                # no need for further processing
+                                del publication['galleys'][index]
+                                continue
+                            issue_data['galley'] = galley
+
+                issue.update(issue_data)
+
+                if len(issue['articles']) > 0:
+                    issue_ob = Issue(issue, publisher)
                     publisher.issues.append(issue_ob)
 
 
 def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp._request_publishers()
-    dp.serialise_data(2, 3)
+    dp.serialise_data(5, 6)
     dp._request_issues()
     dp._request_contexts()
     return dp
@@ -221,17 +242,30 @@ if __name__ == "__main__":
         "-c", required=False,
         default=CONFIG,
         help="path to configuration file")
+    parser.add_argument(
+        "-m", required=False,
+        default=CONFIG_META,
+        help="path to META Data configuration file")
 
     args = vars(parser.parse_args())
     conf = args['c']
+    conf_meta = args['m']
     now = str(datetime.now())
+
     if not pathlib.Path(conf).exists():
-        print(
-            f"{now} [ERROR] Missing config '{conf}'! Halt execution!")
+        print(f"{now} [ERROR] Missing config '{conf}'! Halt execution!")
         exit(1)
     else:
         print(f"{now} [INFO] use configuration file at {conf}")
+    if not pathlib.Path(conf_meta).exists():
+        print(f"{now} [ERROR] Missing META-config '{conf_meta}'! "
+              "Halt execution!")
+        exit(1)
+    else:
+        print(f"{now} [INFO] use META-configuration file at {conf_meta}")
+
     CP.read(conf)
+    CP.read(conf_meta)
 
     if args['verbose']:
         logger.setLevel(level=logging.DEBUG)
