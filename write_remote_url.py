@@ -48,7 +48,6 @@ class WriteRemoteUrl:
                 params = {'publication_id': publication_id,
                           'remote_url': remote_url,
                           'token': self.token}
-                request = f'{self.journal_server}?{params}'
                 result = requests.get(
                     url=self.journal_server, params=params, verify=False)
                 if result.status_code == 200:
