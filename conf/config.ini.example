@@ -3,7 +3,7 @@
     journal_server = <https://ojs.example.com>
     # token from your OJS/OMP (generate/copy with/from WEB-GUI)
     api_token = <token>
-    endpoint_contexts = /api/v1/contexts
+    endpoint_contexts = /api/v1/contexts?isEnabled=true
     endpoint_issues = /api/v1/issues
     # Monograph / Article
     type = Article
