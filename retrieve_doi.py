@@ -50,6 +50,7 @@ class RetrieveDOI:
                 key_filename=self.key_filename)
         except Exception as err:
             logger.error(err)
+            logger.info("Is sshd running on server?")
             return None
         self.client = client
         return client
