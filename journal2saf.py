@@ -35,7 +35,7 @@ CP = ConfigParser()
 CP.optionxform = lambda option: option
 
 
-__all__ = ['Publisher', 'Issue', 'DataPoll']
+__all__ = ['Publisher', 'Submission', 'DataPoll']
 
 
 class Publisher():
@@ -47,7 +47,7 @@ class Publisher():
         self.url_path = data['urlPath']
         self.url = data['url']
         self.publisher_id = data['id']
-        self.issues = []
+        self.submissions = []
 
     def __getattr__(self, name: str) -> any:
         if name in self._data:
@@ -56,7 +56,7 @@ class Publisher():
             return self.__getattribute__(name)
 
 
-class Issue():
+class Submission():
     """This class stores single issue objects"""
 
     def __init__(self, data, parent) -> None:
@@ -73,7 +73,7 @@ class Issue():
 class DataPoll():
     """This class is going to requests the omp/ojs server
        and even creating/collecting instances
-       of issues and publication objects
+       of Submission and Publication objects
     """
 
     def __init__(self, configparser) -> None:
@@ -83,6 +83,7 @@ class DataPoll():
     def load_config(self, configparser) -> None:
         g = configparser['general']
         self.endpoint_contexts = g['endpoint_contexts']
+        self.endpoint_submissions = g['endpoint_submissions']
         self.endpoint_issues = g['endpoint_issues']
         self.journal_server = f"{g['journal_server']}/"
         self.token = f"apiToken={g['api_token']}"
@@ -91,9 +92,8 @@ class DataPoll():
 
     def determine_done(self):
         self.processed = {}
-        export = Path(self.export_path).iterdir()
+        export = [f for f in Path(self.export_path).iterdir() if f.is_file()]
         for file_ in export:
-            print(file_.name)
             parts = re.split('[_.]', file_.name)
             publication_id = parts[3]
             submission_file_id = parts[7]
@@ -145,88 +145,101 @@ class DataPoll():
             publisher = Publisher(data)
             self.publishers.append(publisher)
 
-    def rest_call_issues(self, journal_url, offset=0) -> str:
-        """build issues call for journal request"""
-        endpoint = self.endpoint_issues
-        mark = '&' if '?' in endpoint else '?'
-        endpoint = f"{endpoint}{mark}offset={offset}&isPublish=true"
-        rest_call = ''.join([
-            journal_url, endpoint])
-        logger.debug(
-            "build issues REST call: {rest_call}")
-        return rest_call
-
     def _request_contexts(self) -> None:
         for publisher in self.publishers:
             publisher_url = publisher._href
             context_dict = self._server_request(publisher_url)
             logger.info(
                 f'got {len(context_dict)} keys/values for {publisher_url}')
+            logger.info(f"Contact Email {context_dict['contactEmail']}")
             publisher._data.update(context_dict)
 
-    def _request_issues(self) -> None:
+    def rest_call_issue(self, journal_url, issue_id) -> str:
+        """build issue call by id for server request"""
+        endpoint = self.endpoint_issues
+        endpoint = f"{endpoint}/{issue_id}"
+        rest_call = ''.join([journal_url, endpoint])
+        logger.debug(f"build issue REST call: {rest_call}")
+        return rest_call
+
+    def rest_call_submissions(self, journal_url, offset=0) -> str:
+        """build submissions call for server request"""
+        endpoint = self.endpoint_submissions
+        mark = '&' if '?' in endpoint else '?'
+        endpoint = f"{endpoint}{mark}offset={offset}&isPublish=true"
+        rest_call = ''.join([
+            journal_url, endpoint])
+        logger.debug(
+            f"build issues REST call: {rest_call}")
+        return rest_call
+
+    def _reques_submissions(self) -> None:
         for publisher in self.publishers:
-            allissues = 1
+            url = publisher.url
+            allsubmission = 1
             offset = 0
-            issues_dict = {'items': []}
-            while allissues > offset:
-                query_issues = self.rest_call_issues(publisher.url, offset)
-                logger.info(f'request all issues for {publisher.url_path}:'
-                            f' {query_issues}')
-                batch_ = self._server_request(query_issues)
-                issues_dict['items'].extend(batch_['items'])
-                allissues = batch_['itemsMax']
-                offset = len(issues_dict['items'])
-            logger.info('got {} issues'.format(len(issues_dict['items'])))
+            submissions_dict = {'items': []}
+            while allsubmission > offset:
+                query_submissions = self.rest_call_submissions(
+                    publisher.url, offset)
+                logger.info(f'request all submission for {publisher.url_path}:'
+                            f' {query_submissions}')
+                batch_ = self._server_request(query_submissions)
+                submissions_dict['items'].extend(batch_['items'])
+                allsubmission = batch_['itemsMax']
+                offset = len(submissions_dict['items'])
+            logger.info('got {} issues'.format(len(submissions_dict['items'])))
 
-            for issue in issues_dict['items']:
-                issue_data = self._server_request(issue['_href'])
-                href = issue.get('_href')
-                logger.debug(f'process issue {href}')
-                for article in issue_data['articles']:  # just one article
-                    status = article['status']
-                    if status != 3:  # 3 means "published"
-                        logger.info(
-                            f"article is not yet published: {status},"
-                            " continue")
-                        continue
-                    issue_data['article'] = article
-                    for publication in article['publications']:
-                        issue_data['publication'] = publication
-                        # hier nach den datails fragen
-                        publ_href = publication['_href']
-                        publication_detail = self._server_request(publ_href)
-                        issue_data.update(publication_detail)
-                        for index, galley in enumerate(publication['galleys']):
-                            remote_url = galley['urlRemote']
-                            if remote_url:
-                                logger.info(
-                                    f"remote_url already set for {publ_href}"
-                                    " ({remote_url}), continue")
-                                # the galley['urlRemote'] is already set!
-                                # no need for further processing
-                                del publication['galleys'][index]
-                                continue
-                            file_id = str(galley['submissionFileId'])
-                            publ_id = str(galley['publicationId'])
-                            if publ_id == self.processed.get(file_id):
-                                logger.warning(f'file exist in export {publ_href}')
-                                continue
-                            issue_data['galley'] = galley
+            for subm in submissions_dict['items']:
+                subm_data = self._server_request(subm['_href'])
+                href = subm.get('_href')
+                logger.debug(f'process subm {href}')
+                for publication in subm['publications']:
+                    subm_data['publication'] = publication
+                    # hier nach den datails fragen
+                    publ_href = publication['_href']
+                    publication_detail = self._server_request(publ_href)
+                    subm_data.update(publication_detail)
 
-                issue.update(issue_data)
+                    issue_id = publication_detail['issueId']
 
-                if len(issue['articles']) > 0:
-                    issue_ob = Issue(issue, publisher)
-                    publisher.issues.append(issue_ob)
+                    if issue_id:
+                        issue_request = self.rest_call_issue(url, issue_id)
+                        issue_detail = self._server_request(issue_request)
+                    else:
+                        print('*' * 100)
+                        print('keine issue id: 'url)
+                        print('*' * 100)
+                    subm_data.update(issue_detail)
+
+                    for index, galley in enumerate(publication['galleys']):
+                        remote_url = galley['urlRemote']
+                        if remote_url:
+                            logger.info(
+                                f"remote_url already set for {publ_href}"
+                                " ({remote_url}), continue")
+                            # the galley['urlRemote'] is already set!
+                            # no need for further processing
+                            del publication['galleys'][index]
+                            continue
+                        file_id = str(galley['submissionFileId'])
+                        publ_id = str(galley['publicationId'])
+                        if publ_id == self.processed.get(file_id):
+                            logger.warning(f'file exist in export {publ_href}')
+                            continue
+                        subm_data['galley'] = galley
+
+                subm.update(subm_data)
+                subm_ob = Submission(subm, publisher)
+                publisher.submissions.append(subm_ob)
 
 
 def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data(1, 2)
-    dp._request_issues()
+    dp.serialise_data(0, 2)
+    dp._reques_submissions()
     dp._request_contexts()
     return dp
 
@@ -256,9 +269,9 @@ def main() -> None:
     start = datetime.now()
     datapoll = data_poll()
     export_saf(datapoll)
-    #copy_saf(CP)
-    #retrieve_doi(CP)
-    #write_remote_url(CP)
+    copy_saf(CP)
+    retrieve_doi(CP)
+    write_remote_url(CP)
 
     end = datetime.now()
     logger.info(f"Elapsed time: {str(end-start).split('.')[0]}")

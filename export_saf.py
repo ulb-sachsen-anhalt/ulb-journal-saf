@@ -75,19 +75,19 @@ class ExportSAF:
         with open(pth, 'w') as fh:
             fh.write(collection)
 
-    def write_meta_file(self, item_folder, issue) -> None:
-        locale = issue.locale
+    def write_meta_file(self, item_folder, submission) -> None:
+        locale = submission.locale
         schema_dict = {}
         # eval-call will use following variables
-        context = issue.parent
+        context = submission.parent
         language = self.locale2isolang(locale)
         logger.debug(f"{context} {language}")
-        pages = issue.publication['pages']
+        pages = submission.publication['pages']
         pagestart = pageend = pages
         try:
             pagestart, pageend = pages.split('-')
         except (ValueError, AttributeError):
-            logger.error(
+            logger.warning(
                 f"cannot split pages ({pages}) into start and end")
 
         for k, v in self.meta.items():
@@ -119,8 +119,8 @@ class ExportSAF:
         for schema, dcl in schema_dict.items():
             self.write_xml_file(item_folder, dcl, schema)
 
-    def download_galley(self, context, work_dir, issue) -> list:
-        publication = issue.publication
+    def download_galley(self, context, work_dir, submission) -> list:
+        publication = submission.publication
         context_url = context.url
         galleys = publication['galleys']
 
@@ -163,23 +163,24 @@ class ExportSAF:
     def export(self) -> None:
         for context in self.contexts:
             context_name = context.url_path
-            for num, issue in enumerate(context.issues):
-                if not (hasattr(issue, 'galley') and issue.galley):
+            for num, submission in enumerate(context.submissions):
+                if not (hasattr(submission, 'galley') and submission.galley):
                     logger.warning(
                         'no galley found for publisher_id '
-                        f'{issue.parent.publisher_id}')
+                        f'{submission.parent.publisher_id}')
                     continue
-                submission_file_id = issue.galley['submissionFileId']
-                publication_id = issue.galley['publicationId']
+                submission_file_id = submission.galley['submissionFileId']
+                publication_id = submission.galley['publicationId']
                 item_folder = Path(self.export_path)\
                     .joinpath(context_name, f'publication_id_{publication_id}',
                               f'submission_file_id_{submission_file_id}')
 
-                self.write_meta_file(item_folder, issue)
+                self.write_meta_file(item_folder, submission)
                 self.write_collections_file(item_folder, self.collection)
 
                 # write contents file
-                filenames = self.download_galley(context, item_folder, issue)
+                filenames = self.download_galley(
+                    context, item_folder, submission)
                 self.write_contents_file(item_folder, filenames)
 
     def write_zips(self) -> None:
