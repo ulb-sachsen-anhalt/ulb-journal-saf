@@ -206,10 +206,6 @@ class DataPoll():
                     if issue_id:
                         issue_request = self.rest_call_issue(url, issue_id)
                         issue_detail = self._server_request(issue_request)
-                    else:
-                        print('*' * 100)
-                        print('keine issue id: 'url)
-                        print('*' * 100)
                     subm_data.update(issue_detail)
 
                     for index, galley in enumerate(publication['galleys']):
