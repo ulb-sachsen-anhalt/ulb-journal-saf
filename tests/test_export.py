@@ -23,7 +23,8 @@ def fixture_configuration():
     CP.set('general', 'journal_server', 'https://ojs.example.com')
     CP.set('general', 'type', 'article')
     CP.set('export', 'export_path', './export')
-    CP.set('general', 'endpoint_contexts', '/api/v1/contexts')
+    CP.set('general', 'endpoint_contexts', '/api/v1/contexts?isEnabled=true')
+    CP.set('general', 'endpoint_submissions', '/api/v1/submissions')
     CP.set('general', 'endpoint_issues', '/api/v1/issues')
     CP.set('export', 'dc.date.available', 'issue.datePublished')
     CP.set('export', 'collection', COLLECTION)
@@ -48,10 +49,10 @@ def download_galley(context, work_dir, issue):
 @pytest.fixture(name="contexts")
 def fixture_contexts(configuration):
     dp = DataPoll(configuration)
-    dp.publishers_item_dict = publishers.publisher
+    dp.submissions_dict = publishers.publisher
+    dp.items = dp.submissions_dict['items']
     dp.serialise_data()
     dp._server_request = _server_request
-    dp._request_issues()
     return(dp.publishers)
 
 

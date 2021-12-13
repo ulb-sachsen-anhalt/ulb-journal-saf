@@ -20,7 +20,8 @@ def fixture_configuration():
     CP.set('general', 'journal_server', 'https://ojs.example.com')
     CP.set('general', 'type', 'article')
     CP.set('export', 'export_path', './export')
-    CP.set('general', 'endpoint_contexts', '/api/v1/contexts')
+    CP.set('general', 'endpoint_contexts', '/api/v1/contexts?isEnabled=true')
+    CP.set('general', 'endpoint_submissions', '/api/v1/submissions')
     CP.set('general', 'endpoint_issues', '/api/v1/issues')
     CP.set('export', 'dc.date.available', 'issue.datePublished')
     CP.set('export', 'collection', COLLECTION)
@@ -30,18 +31,11 @@ def fixture_configuration():
     return CP
 
 
-def test_rest_call_context(configuration):
+def test_s(configuration):
     """check if methode deliver valid call"""
-    journal_url = JURL
-    journalid = '23'
     dp = DataPoll(configuration)
-    restcall = dp.rest_call_context(journal_url, journalid)
-    assert journal_url in restcall
-    assert restcall.endswith(journalid)
-    restcall = dp.rest_call_context(journal_url)
-    assert restcall.endswith('contexts')
-    restcall = dp.rest_call_context()
-    assert restcall.endswith('contexts')
+    restcall = dp.rest_call_contexts(1)
+    assert restcall.endswith('isEnabled=true')
 
 
 def test_rest_call_issues(configuration):
@@ -51,15 +45,14 @@ def test_rest_call_issues(configuration):
     dp = DataPoll(configuration)
     endpoint = "/api/v1/issues"
     dp.endpoint_issues = endpoint
-    restcall = dp.rest_call_issues(journal_url, journalid)
+    restcall = dp.rest_call_issue(journal_url, journalid)
     assert restcall == JURL + endpoint + '/' + journalid
-    restcall = dp.rest_call_issues(journal_url)
-    assert restcall == JURL + endpoint
 
 
 def test_serialise_data(configuration):
     dp = DataPoll(configuration)
-    dp.publishers_item_dict = publishers.publisher
+    dp.submissions_dict = publishers.publisher
+    dp.items = dp.submissions_dict['items']
     dp.serialise_data()
     assert isinstance(dp.publishers, list)
     assert len(dp.publishers) == 1
@@ -75,8 +68,9 @@ def _server_request(a):
 
 def test_request_issues(configuration):
     dp = DataPoll(configuration)
-    dp.publishers_item_dict = publishers.publisher
+    dp.submissions_dict = publishers.publisher
+    dp.items = dp.submissions_dict['items']
     dp.serialise_data()
     dp._server_request = _server_request
-    dp._request_issues()
+    dp.rest_call_issue('url', 1)
     assert(len(dp.publishers)) == 1
