@@ -6,8 +6,8 @@ echo "--------------------------------------------------------------------------
 echo "Version 0.2.0"
 ####
 #docker exec --user dspace  dspace2_dspace_1 /opt/dspace/repo/bin/dspace import --delete --eperson axel.bauer@bibliothek.uni-halle.de --mapfile
-#  run this script form host cli:
-#  docker exec -it  dspace2_dspace_1 /opt/dspace/repo/bin/journals_import.sh
+#  run this script from host cli:
+#  docker exec -it  dspace2 /opt/dspace/repo/bin/journals_import.sh
 ####
 dspace="/opt/dspace/repo/bin/dspace"
 safs="/opt/dspace/repo/infrastructure/ojs_omp/source/"
@@ -31,13 +31,13 @@ function get_doi() {
         mapfilename=$2
         echo got Handle: "$HANDLE"
         DOI=$(/opt/dspace/repo/bin/dspace doi-organiser --list | grep "$HANDLE")
-        echo "die doi Zeile ist ${DOI}"
+        echo "DOI handle--> ${DOI}"
         # "set Internal Field Separator to ' '".
         IFS=' '
         # read part by part into array 'doiline' 
         read -r -a doiline <<< "${DOI}"
         doi=${doiline[0]}
-        echo "extracted DOI:$doi"
+        echo "extracted DOI: $doi"
         write_doi "$mapfilename".doi "$doi"
 }
 
@@ -50,8 +50,7 @@ function get_handle() {
            IFS=' ' read -r -a array <<< "$(cat "$1")"
            ISSUE=${array[0]}
            HANDLE=${array[1]}
-           echo "das issue: $ISSUE"
-           echo "das handle: $HANDLE"
+           echo "the issue: $ISSUE"
            get_doi "$HANDLE" "$mapfilename"
         fi
 }
