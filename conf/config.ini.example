@@ -11,8 +11,9 @@
 [export]
     # store zip (SAFs) files here
     export_path = ./export
-    # collection in dspace
+    # collection in dspace (ask your Dspace Admin for this number)
     collection = 123456789/26132
+    # if you write back the DOI to OJS/OMP, this will be the prefix 
     doi_prefix = http://dx.doi.org/
 
 [scp]
