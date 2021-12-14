@@ -105,6 +105,7 @@ class ExportSAF:
                 if isinstance(value, dict):
                     if locale in value:
                         value = value[locale]
+                        meta_tpl[-1] = f' language="{language}"'
 
                 if isinstance(value, str) and\
                         (value.count('<') and value.count('>')):
