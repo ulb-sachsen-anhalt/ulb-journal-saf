@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
+    format='%(asctime)s %(levelname)-5s %(message)s')
 
 logger = logging.getLogger(__file__.split('/')[-1])
 
@@ -211,4 +211,8 @@ class ExportSAF:
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
             shutil.rmtree(context)
-        logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
+        if size_abs:    
+            logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
+        else:
+            logger.info(f'nothing to write, exit')
+
