@@ -3,6 +3,7 @@
 import logging
 import paramiko
 import warnings
+from pathlib import Path
 from paramiko.client import SSHClient
 
 logging.basicConfig(
@@ -55,8 +56,14 @@ class RetrieveDOI:
         self.client = client
         return client
 
-    def retrieve_files(self) -> None:
+    def determine_done(self) -> list:
+        files = Path(self.export_path).iterdir()
+        return [f.name for f in files if f.is_file() and f.name.endswith('doi')]
+
+    def retrieve_files(self, already_processed=[]) -> None:
         client = self.get_client()
+        count_done = 0
+        count = 0
         if client is not None:
             with client.open_sftp() as ftp_client:
                 export_path = self.export_path
@@ -64,13 +71,19 @@ class RetrieveDOI:
                 if not doifiles:
                     logger.info("no new doi files")
                 for doifile in doifiles:
+                    if doifile in already_processed:
+                        count_done += 1
+                        continue
+                    count += 1
                     ftp_client.get(
                         f"{self.doi_path}/{doifile}",
                         f"{export_path}/{doifile}"
                         )
                     logger.info(f"got file --> {doifile}")
+            if count_done > 0:
+                logger.info(f"{count_done} DOI files already processed")
             client.close()
-            logger.info('copy done...')
+            logger.info('{count} doi files copied')
 
     def copy(self) -> dict:
         saf_files = self.get_files()

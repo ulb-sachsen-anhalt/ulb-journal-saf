@@ -234,7 +234,7 @@ def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data(0, 2)
+    dp.serialise_data(3, 4)
     dp._reques_submissions()
     dp._request_contexts()
     return dp
@@ -253,7 +253,8 @@ def copy_saf(CP: ConfigParser) -> None:
 
 def retrieve_doi(CP: ConfigParser) -> None:
     retrievedoi = RetrieveDOI(CP)
-    retrievedoi.retrieve_files()
+    doi_done = retrievedoi.determine_done()
+    retrievedoi.retrieve_files(doi_done)
 
 
 def write_remote_url(CP: ConfigParser) -> None:
