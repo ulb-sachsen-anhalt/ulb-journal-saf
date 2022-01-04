@@ -39,7 +39,8 @@ __all__ = ['Publisher', 'Submission', 'DataPoll']
 
 
 class Publisher():
-    """This class stores single Publisher object"""
+    """This class stores single Publisher objects
+        and according submissions"""
 
     def __init__(self, data) -> None:
         self._data = data
@@ -57,7 +58,7 @@ class Publisher():
 
 
 class Submission():
-    """This class stores single issue objects"""
+    """This class stores single Submission objects"""
 
     def __init__(self, data, parent) -> None:
         self._data = data
@@ -92,7 +93,12 @@ class DataPoll():
 
     def determine_done(self):
         self.processed = {}
-        export = [f for f in Path(self.export_path).iterdir() if f.is_file()]
+        try:
+            export = [f for f in Path(self.export_path).iterdir()
+                      if f.is_file()]
+        except FileNotFoundError as err:
+            logger.error(f'export path failure {err}')
+            exit()
         for file_ in export:
             parts = re.split('[_.]', file_.name)
             publication_id = parts[3]
@@ -100,11 +106,8 @@ class DataPoll():
             self.processed[submission_file_id] = publication_id
 
     def _server_request(self, query) -> dict:
-        if '?' in query:
-            query += f'&{self.token}'
-        else:
-            query += f'?{self.token}'
-
+        mark = '&' if '?' in query else '?'
+        query += f'{mark}{self.token}'
         # no need to verify, 'cause we trust the server
         result = requests.get(query, verify=False)
 
@@ -116,7 +119,7 @@ class DataPoll():
         return result_dct
 
     def rest_call_contexts(self, offset=0) -> str:
-        """build contexts call for server request"""
+        """build contexts call for server REST-request"""
         endpoint = self.endpoint_contexts
         mark = '&' if '?' in endpoint else '?'
         endpoint = f"{endpoint}{mark}offset={offset}&isEnabled=true"
@@ -139,9 +142,11 @@ class DataPoll():
             offset = len(self.items)
         logger.info(F'got all published items ({len(self.items)}), done...')
 
-    def serialise_data(self, start=0, end=-1) -> None:
-        logger.info(f"{len(self.items)} publishers found")
-        for data in self.items[start:end]:
+    def serialise_data(self, start=0, end=None) -> None:
+        logger.info(f"process {len(self.items)} publishers")
+        if end is None:
+            end = len(self.items)
+        for index, data in enumerate(self.items[start:end]):
             publisher = Publisher(data)
             self.publishers.append(publisher)
 
@@ -155,7 +160,7 @@ class DataPoll():
             publisher._data.update(context_dict)
 
     def rest_call_issue(self, journal_url, issue_id) -> str:
-        """build issue call by id for server request"""
+        """build issue call by id for server REST-request"""
         endpoint = self.endpoint_issues
         endpoint = f"{endpoint}/{issue_id}"
         rest_call = ''.join([journal_url, endpoint])
@@ -163,7 +168,7 @@ class DataPoll():
         return rest_call
 
     def rest_call_submissions(self, journal_url, offset=0) -> str:
-        """build submissions call for server request"""
+        """build submissions call for server REST-request"""
         endpoint = self.endpoint_submissions
         mark = '&' if '?' in endpoint else '?'
         endpoint = f"{endpoint}{mark}offset={offset}&isPublish=true"
@@ -172,6 +177,13 @@ class DataPoll():
         logger.debug(
             f"build issues REST call: {rest_call}")
         return rest_call
+
+    def getSubmissionFileId(self, href, assocId):
+        filesdata = self._server_request(href + '/files')
+        for fd in filesdata['items']:
+            if fd['assocId'] == int(assocId):
+                return fd['id']
+
 
     def _reques_submissions(self) -> None:
         for publisher in self.publishers:
@@ -201,19 +213,19 @@ class DataPoll():
                     publication_detail = self._server_request(publ_href)
                     subm_data.update(publication_detail)
 
-                    issue_id = publication_detail['issueId']
+                    issue_id = publication_detail.get('issueId')
 
                     if issue_id:
                         issue_request = self.rest_call_issue(url, issue_id)
                         issue_detail = self._server_request(issue_request)
-                    subm_data.update(issue_detail)
+                        subm_data.update(issue_detail)
 
-                    for index, galley in enumerate(publication['galleys']):
+                    for index, galley in enumerate(publication.get('galleys', [])):
                         remote_url = galley['urlRemote']
                         if remote_url:
                             logger.info(
                                 f"remote_url already set for {publ_href}"
-                                " ({remote_url}), continue")
+                                f" ({remote_url}), continue")
                             # the galley['urlRemote'] is already set!
                             # no need for further processing
                             del publication['galleys'][index]
@@ -225,6 +237,29 @@ class DataPoll():
                             continue
                         subm_data['galley'] = galley
 
+                    for index, publicationFormat in enumerate(publication.get('publicationFormats', [])):
+                        remote_url = publicationFormat['urlRemote']
+                        if remote_url:
+                            logger.info(
+                                f"remote_url already set for {publ_href}"
+                                f" ({remote_url}), continue")
+                            # the publicationFormat['urlRemote'] is already set!
+                            # no need for further processing
+                            del publication['publicationFormat'][index]
+                            continue
+                        file_id = str(publicationFormat['id'])
+                        # fake missing 'submissionFileId'
+                        # for further processing
+                        #publicationFormat['submissionFileId'] = file_id 
+                        assocId = file_id
+                        fid = self.getSubmissionFileId(href, assocId)
+                        publicationFormat['submissionFileId'] = fid
+                        publ_id = str(publicationFormat['publicationId'])
+                        if publ_id == self.processed.get(file_id):
+                            logger.warning(f'file exist in export {publ_href}')
+                            continue
+                        subm_data['publicationFormat'] = publicationFormat
+
                 subm.update(subm_data)
                 subm_ob = Submission(subm, publisher)
                 publisher.submissions.append(subm_ob)
@@ -234,7 +269,8 @@ def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data(3, 4)
+    dp.serialise_data(1, 2)
+    # dp.serialise_data()
     dp._reques_submissions()
     dp._request_contexts()
     return dp
