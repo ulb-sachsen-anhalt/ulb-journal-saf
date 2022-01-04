@@ -1,4 +1,6 @@
 [general]
+    # what system we are using: 'omp' or 'ojs'
+    system = ojs
     # your OJS/OMP Server 
     journal_server = <https://ojs.example.com>
     # token from your OJS/OMP (generate/copy with/from WEB-GUI)
