@@ -67,7 +67,11 @@ class RetrieveDOI:
         if client is not None:
             with client.open_sftp() as ftp_client:
                 export_path = self.export_path
-                doifiles = ftp_client.listdir(self.doi_path)
+                try:
+                    doifiles = ftp_client.listdir(self.doi_path)
+                except FileNotFoundError as err:
+                    logger.error(f'{self.doi_path} not found remote, {err}')
+                    exit()
                 if not doifiles:
                     logger.info("no new doi files")
                 for doifile in doifiles:
@@ -83,7 +87,7 @@ class RetrieveDOI:
             if count_done > 0:
                 logger.info(f"{count_done} DOI files already processed")
             client.close()
-            logger.info('{count} doi files copied')
+            logger.info(f'{count} doi files copied')
 
     def copy(self) -> dict:
         saf_files = self.get_files()
