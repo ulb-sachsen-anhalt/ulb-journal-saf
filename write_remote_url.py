@@ -57,4 +57,5 @@ class WriteRemoteUrl:
                     done = doi.with_suffix(doi.suffix + '.done')
                     doi.rename(done)
                     logging.info(f'rename DOI file to {done}')
-
+                else:
+                    logging.error(f'rename DOI file to failed {result.reason}')
