@@ -28,6 +28,7 @@ class ExportSAF:
         e = configparser['export']
         g = configparser['general']
         self.meta = configparser['meta']
+        self.system = g['system']
         self.export_path = e['export_path']
         self.collection = e['collection']
         self.token = f"&apiToken={g['api_token']}"
@@ -82,7 +83,7 @@ class ExportSAF:
         context = submission.parent
         language = self.locale2isolang(locale)
         logger.debug(f"{context} {language}")
-        pages = submission.publication['pages']
+        pages = submission.publication.get('pages', 0)
         pagestart = pageend = pages
         try:
             pagestart, pageend = pages.split('-')
@@ -140,6 +141,12 @@ class ExportSAF:
             submission_file_id = galley['submissionFileId']
             url = "{}/article/download/{}/{}/{}".format(
                 context_url, submission_id, galley_id, submission_file_id)
+            # omp
+            # 	https://ompdev.bibliothek.uni-halle.de/btwr/catalog/download/7/3/20
+            # 7 = publicationFormats[0].publicationId in DB submissions_id (Tabl:submission_files)
+            # 3 = publicationFormats[0].id in DB --> assoc_id (Tabl:submission_files)
+            # 20 = submissions_file_id   # wird leider nicht beim API Req. geliefert
+
             logger.info(f'download file: {url}')
             response = requests.get(url, verify=False)
             status_code = response.status_code
@@ -161,17 +168,70 @@ class ExportSAF:
                 filenames.append(filename)
         return filenames
 
+    def download_publicationFormat(self, context, work_dir, submission) -> list:
+        publication = submission.publication
+        context_url = context.url
+        galleys = publication['publicationFormats']
+
+        filenames = []
+        for galley in galleys:
+            #if galley.get('file') is None:
+            #    logger.warning(
+            #        'no file in galley with '
+            #        f'publication_id {galley["publicationId"]}')
+            #    continue
+            galley_id = galley['id']
+            submission_id = galley['publicationId']
+            publication_id = galley['publicationId']
+            
+            submission_file_id = galley['submissionFileId']
+            url = "{}/catalog/download/{}/{}/{}".format(
+                context_url, submission_id, galley_id, submission_file_id)
+            # omp
+            # 	https://ompdev.bibliothek.uni-halle.de/btwr/catalog/download/7/3/20
+            # 7 = publicationFormats[0].publicationId in DB submissions_id (Tabl:submission_files)
+            # 3 = publicationFormats[0].id in DB --> assoc_id (Tabl:submission_files)
+            # 20 = submissions_file_id   # wird leider nicht beim API Req. geliefert
+
+            logger.info(f'download file: {url}')
+            response = requests.get(url, verify=False)
+            status_code = response.status_code
+            if status_code != 200:
+                logger.error(f'error download file code:{status_code} {url}')
+                continue
+            mime_type = response.headers['content-type']
+            extension = mimetypes.guess_extension(mime_type)
+            filename = '{}_{}_{}{}'.format(
+                context.url_path, publication_id,
+                submission_file_id, extension)
+
+            export_path = work_dir / filename
+
+            with open(export_path, 'wb') as fh:
+                for chunk in response.iter_content(chunk_size=16*1024):
+                    fh.write(chunk)
+                logger.info(
+                    f'download file at {url} '
+                    f'size: {Path(export_path).stat().st_size >> 20} Mb')
+                filenames.append(filename)
+        return filenames
+
+
     def export(self) -> None:
         for context in self.contexts:
             context_name = context.url_path
             for num, submission in enumerate(context.submissions):
-                if not (hasattr(submission, 'galley') and submission.galley):
+                filerecordname = 'galley' if self.system == 'ojs'\
+                    else 'publicationFormat'
+                filerecord = getattr(submission, filerecordname, None)
+                if not filerecord:
                     logger.warning(
-                        'no galley found for publisher_id '
-                        f'{submission.parent.publisher_id}')
+                        f'no {filerecordname} found for publisher_id '
+                        f'{submission.parent.publisher_id} '
+                        f'submission id {submission.id}')
                     continue
-                submission_file_id = submission.galley['submissionFileId']
-                publication_id = submission.galley['publicationId']
+                submission_file_id = filerecord['submissionFileId']
+                publication_id = filerecord['publicationId']
                 item_folder = Path(self.export_path)\
                     .joinpath(context_name, f'publication_id_{publication_id}',
                               f'submission_file_id_{submission_file_id}')
@@ -180,8 +240,13 @@ class ExportSAF:
                 self.write_collections_file(item_folder, self.collection)
 
                 # write contents file
-                filenames = self.download_galley(
-                    context, item_folder, submission)
+                if self.system == 'ojs':
+                    filenames = self.download_galley(
+                        context, item_folder, submission)
+                else:
+                    filenames = self.download_publicationFormat(
+                        context, item_folder, submission)
+
                 self.write_contents_file(item_folder, filenames)
 
     def write_zips(self) -> None:
@@ -215,4 +280,3 @@ class ExportSAF:
             logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
         else:
             logger.info(f'nothing to write, exit')
-
