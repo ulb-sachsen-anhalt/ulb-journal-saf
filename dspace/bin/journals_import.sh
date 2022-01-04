@@ -9,10 +9,17 @@ echo "Version 0.2.0"
 #  run this script from host cli:
 #  docker exec -it  dspace2 /opt/dspace/repo/bin/journals_import.sh
 ####
+
+if [ -z "$1" ]
+  then
+    echo "need argument 'omp' or 'ojs'"
+    exit
+fi
+
 dspace="/opt/dspace/repo/bin/dspace"
-safs="/opt/dspace/repo/infrastructure/ojs_omp/source/"
-maps="/opt/dspace/repo/infrastructure/ojs_omp/map/"
-dois="/opt/dspace/repo/infrastructure/ojs_omp/doi/"
+safs="/opt/dspace/repo/infrastructure/$1/source/"
+maps="/opt/dspace/repo/infrastructure/$1/map/"
+dois="/opt/dspace/repo/infrastructure/$1/doi/"
 
 function write_doi() {
         doifilename=$1

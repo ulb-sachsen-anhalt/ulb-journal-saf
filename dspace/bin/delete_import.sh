@@ -1,8 +1,15 @@
 #!/bin/bash
 
+if [ -z "$1" ]
+  then
+    echo "need argument 'omp' or 'ojs'"
+    exit
+fi
+
+
 dspace="/opt/dspace/repo/bin/dspace"
-mapscontainer="/opt/dspace/repo/infrastructure/ojs_omp/map"
-mapsvolume="./volumes/infrastructure/ojs_omp/map"
+mapscontainer="/opt/dspace/repo/infrastructure/$1/map"
+mapsvolume="./volumes/infrastructure/$1/map"
 container=dspace2_dspace_1
 
 for mf in "$mapsvolume"/*
@@ -13,9 +20,9 @@ for mf in "$mapsvolume"/*
      docker exec --user dspace $container $dspace import --delete --eperson axel.bauer@bibliothek.uni-halle.de --mapfile "$mapcontainer"
    done
 
-rm -vf ./volumes/infrastructure/ojs_omp/doi/*
-rm -vf ./volumes/infrastructure/ojs_omp/map/*
-rm -vf ./volumes/infrastructure/ojs_omp/source/*
+rm -vf ./volumes/infrastructure/$1/doi/*
+rm -vf ./volumes/infrastructure/$1/map/*
+rm -vf ./volumes/infrastructure/$1/source/*
 
-# script ojs server loescht alle remote_url
-ssh ojs ./delete_remote_url.sh
+# script ojs/omp server loescht alle remote_url
+ssh $1 ./delete_remote_url.sh
