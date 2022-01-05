@@ -22,6 +22,7 @@ def fixture_configuration():
     CP.set('general', 'api_token', 'acb')
     CP.set('general', 'journal_server', 'https://ojs.example.com')
     CP.set('general', 'type', 'article')
+    CP.set('general', 'system', 'ojs')
     CP.set('export', 'export_path', './export')
     CP.set('general', 'endpoint_contexts', '/api/v1/contexts?isEnabled=true')
     CP.set('general', 'endpoint_submissions', '/api/v1/submissions')

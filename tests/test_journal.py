@@ -21,6 +21,7 @@ def fixture_configuration():
     CP.set('general', 'type', 'article')
     CP.set('export', 'export_path', './export')
     CP.set('general', 'endpoint_contexts', '/api/v1/contexts?isEnabled=true')
+    CP.set('general', 'endpoint_submissions', '/api/v1/issues')
     CP.set('general', 'endpoint_issues', '/api/v1/issues')
     CP.set('export', 'dc.date.available', 'issue.datePublished')
     CP.set('export', 'collection', COLLECTION)
@@ -54,7 +55,7 @@ def test_serialise_data(configuration):
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()
     assert isinstance(dp.publishers, list)
-    assert len(dp.publishers) == 1
+    assert len(dp.publishers) == 2
 
 
 def _server_request(a):
@@ -72,4 +73,4 @@ def test_request_issues(configuration):
     dp.serialise_data()
     dp._server_request = _server_request
     dp.rest_call_issue('url', 1)
-    assert(len(dp.publishers)) == 1
+    assert(len(dp.publishers)) == 2
