@@ -120,6 +120,7 @@ class DataPoll():
 
     def rest_call_contexts(self, offset=0) -> str:
         """build contexts call for server REST-request"""
+
         endpoint = self.endpoint_contexts
         mark = '&' if '?' in endpoint else '?'
         endpoint = f"{endpoint}{mark}offset={offset}&isEnabled=true"
@@ -184,7 +185,6 @@ class DataPoll():
             if fd['assocId'] == int(assocId):
                 return fd['id']
 
-
     def _reques_submissions(self) -> None:
         for publisher in self.publishers:
             url = publisher.url
@@ -208,7 +208,6 @@ class DataPoll():
                 logger.debug(f'process subm {href}')
                 for publication in subm['publications']:
                     subm_data['publication'] = publication
-                    # hier nach den datails fragen
                     publ_href = publication['_href']
                     publication_detail = self._server_request(publ_href)
                     subm_data.update(publication_detail)
@@ -220,7 +219,9 @@ class DataPoll():
                         issue_detail = self._server_request(issue_request)
                         subm_data.update(issue_detail)
 
-                    for index, galley in enumerate(publication.get('galleys', [])):
+                    # this loop is only for OJS
+                    galleys = publication.get('galleys', [])
+                    for index, galley in enumerate(galleys):
                         remote_url = galley['urlRemote']
                         if remote_url:
                             logger.info(
@@ -237,28 +238,28 @@ class DataPoll():
                             continue
                         subm_data['galley'] = galley
 
-                    for index, publicationFormat in enumerate(publication.get('publicationFormats', [])):
-                        remote_url = publicationFormat['urlRemote']
+                    # this loop is only for OMP
+                    publ_formats = publication.get('publicationFormats', [])
+                    for index, publ_format in enumerate(publ_formats):
+                        remote_url = publ_format['urlRemote']
                         if remote_url:
                             logger.info(
                                 f"remote_url already set for {publ_href}"
                                 f" ({remote_url}), continue")
-                            # the publicationFormat['urlRemote'] is already set!
+                            # publicationFormat['urlRemote'] is already set!
                             # no need for further processing
                             del publication['publicationFormat'][index]
                             continue
-                        file_id = str(publicationFormat['id'])
-                        # fake missing 'submissionFileId'
-                        # for further processing
-                        #publicationFormat['submissionFileId'] = file_id 
-                        assocId = file_id
-                        fid = self.getSubmissionFileId(href, assocId)
-                        publicationFormat['submissionFileId'] = fid
-                        publ_id = str(publicationFormat['publicationId'])
+                        assocId = str(publ_format['id'])
+                        # 'submissionFileId' is not part of OMP
+                        # publicationFormats set, so we need some extra effort
+                        file_id = self.getSubmissionFileId(href, assocId)
+                        publ_format['submissionFileId'] = file_id
+                        publ_id = str(publ_format['publicationId'])
                         if publ_id == self.processed.get(file_id):
                             logger.warning(f'file exist in export {publ_href}')
                             continue
-                        subm_data['publicationFormat'] = publicationFormat
+                        subm_data['publicationFormat'] = publ_format
 
                 subm.update(subm_data)
                 subm_ob = Submission(subm, publisher)
