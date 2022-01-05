@@ -141,12 +141,6 @@ class ExportSAF:
             submission_file_id = galley['submissionFileId']
             url = "{}/article/download/{}/{}/{}".format(
                 context_url, submission_id, galley_id, submission_file_id)
-            # omp
-            # 	https://ompdev.bibliothek.uni-halle.de/btwr/catalog/download/7/3/20
-            # 7 = publicationFormats[0].publicationId in DB submissions_id (Tabl:submission_files)
-            # 3 = publicationFormats[0].id in DB --> assoc_id (Tabl:submission_files)
-            # 20 = submissions_file_id   # wird leider nicht beim API Req. geliefert
-
             logger.info(f'download file: {url}')
             response = requests.get(url, verify=False)
             status_code = response.status_code
@@ -168,30 +162,21 @@ class ExportSAF:
                 filenames.append(filename)
         return filenames
 
-    def download_publicationFormat(self, context, work_dir, submission) -> list:
+    def download_publicationFormat(
+            self, context, work_dir, submission) -> list:
         publication = submission.publication
         context_url = context.url
         galleys = publication['publicationFormats']
 
         filenames = []
         for galley in galleys:
-            #if galley.get('file') is None:
-            #    logger.warning(
-            #        'no file in galley with '
-            #        f'publication_id {galley["publicationId"]}')
-            #    continue
             galley_id = galley['id']
             submission_id = galley['publicationId']
             publication_id = galley['publicationId']
-            
+
             submission_file_id = galley['submissionFileId']
             url = "{}/catalog/download/{}/{}/{}".format(
                 context_url, submission_id, galley_id, submission_file_id)
-            # omp
-            # 	https://ompdev.bibliothek.uni-halle.de/btwr/catalog/download/7/3/20
-            # 7 = publicationFormats[0].publicationId in DB submissions_id (Tabl:submission_files)
-            # 3 = publicationFormats[0].id in DB --> assoc_id (Tabl:submission_files)
-            # 20 = submissions_file_id   # wird leider nicht beim API Req. geliefert
 
             logger.info(f'download file: {url}')
             response = requests.get(url, verify=False)
@@ -215,7 +200,6 @@ class ExportSAF:
                     f'size: {Path(export_path).stat().st_size >> 20} Mb')
                 filenames.append(filename)
         return filenames
-
 
     def export(self) -> None:
         for context in self.contexts:
@@ -276,7 +260,7 @@ class ExportSAF:
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
             shutil.rmtree(context)
-        if size_abs:    
+        if size_abs:
             logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
         else:
-            logger.info(f'nothing to write, exit')
+            logger.info('nothing to write, exit')
