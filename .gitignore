@@ -10,6 +10,8 @@ conf/config.ini
 *.pyc
 
 export/
+export_omp/
+export_ojs/
 
 # local test confs
 conf/config_local_omp.ini
