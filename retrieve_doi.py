@@ -51,14 +51,15 @@ class RetrieveDOI:
                 key_filename=self.key_filename)
         except Exception as err:
             logger.error(err)
-            logger.info("Is sshd running on server?")
+            logger.info(f"is sshd running on {self.server}?")
             return None
         self.client = client
         return client
 
     def determine_done(self) -> list:
         files = Path(self.export_path).iterdir()
-        return [f.name for f in files if f.is_file() and f.name.endswith('doi')]
+        return [f.name for f in files
+                if f.is_file() and f.name.endswith('doi')]
 
     def retrieve_files(self, already_processed=[]) -> None:
         client = self.get_client()
