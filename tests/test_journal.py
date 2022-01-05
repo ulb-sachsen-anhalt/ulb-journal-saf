@@ -9,6 +9,7 @@ from tests.ressources import issue, issues
 JURL = 'https://ojs.exampl.com'
 COLLECTION = '123456789/26132'
 
+
 @pytest.fixture(name="configuration")
 def fixture_configuration():
     """provide minimal working configuration"""
