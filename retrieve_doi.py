@@ -57,9 +57,14 @@ class RetrieveDOI:
         return client
 
     def determine_done(self) -> list:
-        files = Path(self.export_path).iterdir()
-        return [f.name for f in files
-                if f.is_file() and f.name.endswith('doi')]
+        files = list(Path(self.export_path).iterdir())
+        donelist = []
+        for f in files:
+            if f.name.endswith('doi'):
+                donelist.append(f.name)
+            if f.name.endswith('doi.done'):
+                donelist.append(f.name[:-5])
+        return donelist
 
     def retrieve_files(self, already_processed=[]) -> None:
         client = self.get_client()
@@ -74,7 +79,7 @@ class RetrieveDOI:
                     logger.error(f'{self.doi_path} not found remote, {err}')
                     exit()
                 if not doifiles:
-                    logger.info("no new doi files")
+                    logger.info("no new DOI files")
                 for doifile in doifiles:
                     if doifile in already_processed:
                         count_done += 1
@@ -88,7 +93,7 @@ class RetrieveDOI:
             if count_done > 0:
                 logger.info(f"{count_done} DOI files already processed")
             client.close()
-            logger.info(f'{count} doi files copied')
+            logger.info(f'{count} DOI files copied')
 
     def copy(self) -> dict:
         saf_files = self.get_files()
