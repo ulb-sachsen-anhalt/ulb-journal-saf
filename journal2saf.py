@@ -248,7 +248,7 @@ class DataPoll():
                                 f" ({remote_url}), continue")
                             # publicationFormat['urlRemote'] is already set!
                             # no need for further processing
-                            del publication['publicationFormat'][index]
+                            del publication['publicationFormats'][index]
                             continue
                         assocId = str(publ_format['id'])
                         # 'submissionFileId' is not part of OMP
