@@ -209,7 +209,7 @@ class ExportSAF:
                     else 'publicationFormat'
                 filerecord = getattr(submission, filerecordname, None)
                 if not filerecord:
-                    logger.warning(
+                    logger.info(
                         f'no {filerecordname} found for publisher_id '
                         f'{submission.parent.publisher_id} '
                         f'submission id {submission.id}')
