@@ -20,6 +20,7 @@ warnings.filterwarnings(
 
 ###############################################################
 STATUS_PUBLISHED = 3
+# defaults:
 CONFIG = "conf/config.ini"
 CONFIG_META = "conf/config_meta.ini"
 ###############################################################
@@ -234,7 +235,7 @@ class DataPoll():
                         file_id = str(galley['submissionFileId'])
                         publ_id = str(galley['publicationId'])
                         if publ_id == self.processed.get(file_id):
-                            logger.warning(f'file exist in export {publ_href}')
+                            logger.info(f'file exist in export {publ_href}')
                             continue
                         subm_data['galley'] = galley
 
@@ -257,7 +258,7 @@ class DataPoll():
                         publ_format['submissionFileId'] = file_id
                         publ_id = str(publ_format['publicationId'])
                         if publ_id == self.processed.get(file_id):
-                            logger.warning(f'file exist in export {publ_href}')
+                            logger.info(f'file exist in export {publ_href}')
                             continue
                         subm_data['publicationFormat'] = publ_format
 
