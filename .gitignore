@@ -17,3 +17,5 @@ export_ojs/
 conf/config_local_omp.ini
 conf/config_local_ojs.ini
 conf/config.omp.ini
+dspace/bin/delete_import.sh
+authorized_keys
