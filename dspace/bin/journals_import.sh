@@ -5,9 +5,10 @@
 echo "------------------------------------------------------------------------------"
 echo "Version 0.2.0"
 ####
-#docker exec --user dspace  dspace2_dspace_1 /opt/dspace/repo/bin/dspace import --delete --eperson axel.bauer@bibliothek.uni-halle.de --mapfile
+#docker exec --user dspace  dspace2_dspace_1 /opt/dspace/repo/bin/dspace import --delete --eperson <email importer> --mapfile
 #  run this script from host cli:
-#  docker exec -it  dspace2 /opt/dspace/repo/bin/journals_import.sh
+#  docker exec -i  dspace2 /opt/dspace/repo/bin/journals_import.sh
+#  or via Curation Task 
 ####
 
 if [ -z "$1" ]
@@ -20,6 +21,7 @@ dspace="/opt/dspace/repo/bin/dspace"
 safs="/opt/dspace/repo/infrastructure/$1/source/"
 maps="/opt/dspace/repo/infrastructure/$1/map/"
 dois="/opt/dspace/repo/infrastructure/$1/doi/"
+eperson="axel.bauer@bibliothek.uni-halle.de"
 
 function write_doi() {
         doifilename=$1
@@ -66,7 +68,7 @@ function import_saf() {
         saffile=$1
         echo "import $saffile"
         cmd="$dspace import --add \
-        --eperson axel.bauer@bibliothek.uni-halle.de \
+        --eperson $eperson \
         --source $safs \
         --zip $saffile \
         --mapfile $maps/$saffile.map\
@@ -76,14 +78,15 @@ function import_saf() {
 }
 
 
-# das kann evtl. wieder raus, wenn dspace den import übernimmt 
+# we loop over zips in "$saf" folder and call import_saf function for every file
 for saf in "$safs"/*
     do
         safname=$(basename -- "$saf")
         import_saf "$safname"
     done
 
-
+# now we read all resulting map files and extract data in order to build 
+# "doi files" which we place in dois-folder:  $dois 
 for saf in "$safs"/*
     do
         safname=$(basename "$saf")
