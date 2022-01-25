@@ -42,7 +42,7 @@ class ExportSAF:
                 else f'metadata_{schema}.xml'
         work_dir.mkdir(parents=True, exist_ok=True)
         pth = work_dir / name
-        logger.info(f"write {name}")
+        logger.debug(f"write {name}")
         dcline = '  <dcvalue element="{1}" qualifier="{2}"{3}>{0}</dcvalue>'
         dcvalues = [dcline.format(*tpl) for tpl in dblcore]
         schema = f' schema="{schema}"' if schema != 'dc' else ''
@@ -88,7 +88,7 @@ class ExportSAF:
         try:
             pagestart, pageend = pages.split('-')
         except (ValueError, AttributeError):
-            logger.warning(
+            logger.debug(
                 f"cannot split pages ({pages}) into start and end")
 
         for k, v in self.meta.items():
@@ -141,7 +141,7 @@ class ExportSAF:
             submission_file_id = galley['submissionFileId']
             url = "{}/article/download/{}/{}/{}".format(
                 context_url, submission_id, galley_id, submission_file_id)
-            logger.info(f'download file: {url}')
+            logger.debug(f'download file: {url}')
             response = requests.get(url, verify=False)
             status_code = response.status_code
             if status_code != 200:
@@ -156,7 +156,7 @@ class ExportSAF:
             with open(export_path, 'wb') as fh:
                 for chunk in response.iter_content(chunk_size=16*1024):
                     fh.write(chunk)
-                logger.info(
+                logger.debug(
                     f'download file at {url} '
                     f'size: {Path(export_path).stat().st_size >> 20} Mb')
                 filenames.append(filename)
@@ -171,14 +171,14 @@ class ExportSAF:
         filenames = []
         for galley in galleys:
             galley_id = galley['id']
-            submission_id = galley['publicationId']
+            submission_id = submission.submissionId
             publication_id = galley['publicationId']
 
             submission_file_id = galley['submissionFileId']
             url = "{}/catalog/download/{}/{}/{}".format(
                 context_url, submission_id, galley_id, submission_file_id)
 
-            logger.info(f'download file: {url}')
+            logger.debug(f'download file: {url}')
             response = requests.get(url, verify=False)
             status_code = response.status_code
             if status_code != 200:
@@ -195,7 +195,7 @@ class ExportSAF:
             with open(export_path, 'wb') as fh:
                 for chunk in response.iter_content(chunk_size=16*1024):
                     fh.write(chunk)
-                logger.info(
+                logger.debug(
                     f'download file at {url} '
                     f'size: {Path(export_path).stat().st_size >> 20} Mb')
                 filenames.append(filename)
@@ -223,7 +223,6 @@ class ExportSAF:
                 self.write_meta_file(item_folder, submission)
                 self.write_collections_file(item_folder, self.collection)
 
-                # write contents file
                 if self.system == 'ojs':
                     filenames = self.download_galley(
                         context, item_folder, submission)
@@ -243,13 +242,13 @@ class ExportSAF:
         for context in contexts:
             items = [i for i in context.iterdir() if i.is_dir()]
             for item in items:
-                logger.info(f'zip folder at {item}')
+                logger.debug(f'zip folder at {item}')
                 submission_file_id = list(item.iterdir())[0].name
                 name = f'{context.name}_{item.name}_{submission_file_id}'
-                alredy_done = Path(export_pth / (name+'.zip.done'))
-                if alredy_done.is_file():
-                    logger.info(
-                        f'{alredy_done} is alredy processed, skip...')
+                already_done = Path(export_pth / (name+'.zip.done'))
+                if already_done.is_file():
+                    logger.debug(
+                        f'{already_done} is alredy transfered, skip...')
                     continue
                 zipfile = shutil.make_archive(
                     export_pth / name, 'zip', item)
