@@ -34,6 +34,7 @@ class WriteRemoteUrl:
         if not export:
             logging.info('no dois found...')
         doiprefix = self.doi_prefix
+        count_doi_set = 0
         for doi in export:
             doi = Path(doi)
             with open(doi) as fh:
@@ -41,8 +42,7 @@ class WriteRemoteUrl:
                 remote_url = (doiprefix + doival.split(':')[-1]).strip()
                 parts = re.split('[_.]', doi.name)
                 publication_id = parts[3]
-                # submission_id = parts[7]
-                logging.info(
+                logger.debug(
                     f'got DOI {remote_url} '
                     f'for publication_id {publication_id}')
                 params = {'publication_id': publication_id,
@@ -51,11 +51,14 @@ class WriteRemoteUrl:
                 result = requests.get(
                     url=self.journal_server, params=params, verify=False)
                 if result.status_code == 200:
-                    logging.info(
-                        f'successfull committed remote_url {remote_url} '
+                    logger.debug(
+                        f'successfully committed remote_url {remote_url} '
                         f'with publication_id {publication_id} ')
                     done = doi.with_suffix(doi.suffix + '.done')
                     doi.rename(done)
-                    logging.info(f'rename DOI file to {done}')
+                    count_doi_set += 1
+                    logging.debug(f'rename DOI file to {done}')
                 else:
                     logging.error(f'rename DOI file to failed {result.reason}')
+        if count_doi_set:
+            logger.info(f"{count_doi_set} DOIs successfully set")
