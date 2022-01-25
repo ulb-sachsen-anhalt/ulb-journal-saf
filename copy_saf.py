@@ -3,7 +3,7 @@
 import logging
 import paramiko
 from pathlib import Path
-from paramiko.client import SSHClient
+from paramiko.client import SSHClient, AutoAddPolicy
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +41,7 @@ class CopySAF:
             logger.info(f'connect ssh {self.server}')
         client = paramiko.SSHClient()
         client.load_system_host_keys()
+        client.set_missing_host_key_policy(AutoAddPolicy())
         try:
             client.connect(
                 self.server,
@@ -85,7 +86,7 @@ class CopySAF:
                         callback=self.transferobserver)
                     done = file_.with_suffix(file_.suffix + '.done')
                     file_.rename(done)
-                    logger.info(f'rename file {file_} to {done}')
+                    logger.info(f'rename file {file_.name} to {done.name}')
             client.close()
 
     def copy(self) -> dict:
