@@ -116,6 +116,8 @@ class DataPoll():
         if 'error' in result_dct.keys():
             logger.error(
                 f"server request failed due to: {result_dct}")
+            logger.info(
+                "is your api key from ini file matching the apiToken?")
             raise ValueError(result_dct)
         return result_dct
 
@@ -156,9 +158,8 @@ class DataPoll():
         for publisher in self.publishers:
             publisher_url = publisher._href
             context_dict = self._server_request(publisher_url)
-            logger.info(
-                f'got {len(context_dict)} keys/values for {publisher_url}')
-            logger.info(f"Contact Email {context_dict['contactEmail']}")
+            logger.info(f'request {publisher_url}'
+                        f" / Contact Email {context_dict['contactEmail']}")
             publisher._data.update(context_dict)
 
     def rest_call_issue(self, journal_url, issue_id) -> str:
@@ -188,22 +189,32 @@ class DataPoll():
 
     def _reques_submissions(self) -> None:
         for publisher in self.publishers:
+            logger.debug('#' * 100)
+            logger.debug(publisher.url_path)
+            logger.debug('#' * 100)
             url = publisher.url
             allsubmission = 1
             offset = 0
+            published = not_published = 0
             submissions_dict = {'items': []}
             while allsubmission > offset:
                 query_submissions = self.rest_call_submissions(
                     publisher.url, offset)
-                logger.info(f'request all submission for {publisher.url_path}:'
-                            f' {query_submissions}')
+                logger.debug(f'request submission for {publisher.url_path}:'
+                             f' {query_submissions}')
                 batch_ = self._server_request(query_submissions)
                 submissions_dict['items'].extend(batch_['items'])
                 allsubmission = batch_['itemsMax']
                 offset = len(submissions_dict['items'])
+            logger.info(f'request all submissions for {publisher.url_path}')
             logger.info('got {} issues'.format(len(submissions_dict['items'])))
 
             for subm in submissions_dict['items']:
+                print('.', end='')
+                if subm['status'] != STATUS_PUBLISHED:
+                    not_published += 1
+                    continue
+                published += 1
                 subm_data = self._server_request(subm['_href'])
                 href = subm.get('_href')
                 logger.debug(f'process subm {href}')
@@ -225,11 +236,11 @@ class DataPoll():
                     for index, galley in enumerate(galleys):
                         remote_url = galley['urlRemote']
                         if remote_url:
-                            logger.info(
+                            logger.debug(
                                 f"remote_url already set for {publ_href}"
                                 f" ({remote_url}), continue")
                             # the galley['urlRemote'] is already set!
-                            # no need for further processing
+                            # no further processing is rquired
                             del publication['galleys'][index]
                             continue
                         file_id = str(galley['submissionFileId'])
@@ -244,11 +255,11 @@ class DataPoll():
                     for index, publ_format in enumerate(publ_formats):
                         remote_url = publ_format['urlRemote']
                         if remote_url:
-                            logger.info(
+                            logger.debug(
                                 f"remote_url already set for {publ_href}"
                                 f" ({remote_url}), continue")
                             # publicationFormat['urlRemote'] is already set!
-                            # no need for further processing
+                            # no further processing is rquired
                             del publication['publicationFormats'][index]
                             continue
                         assocId = str(publ_format['id'])
@@ -261,18 +272,21 @@ class DataPoll():
                             logger.info(f'file exist in export {publ_href}')
                             continue
                         subm_data['publicationFormat'] = publ_format
-
                 subm.update(subm_data)
                 subm_ob = Submission(subm, publisher)
                 publisher.submissions.append(subm_ob)
+            print()
+            logger.info(f"request {published} publications, "
+                        f"{not_published} unpublished skipped")
 
 
 def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data(1, 2)
-    # dp.serialise_data()
+    # dp.serialise_data(1, 2)
+    # dp.serialise_data(0, 1)
+    dp.serialise_data()
     dp._reques_submissions()
     dp._request_contexts()
     return dp
