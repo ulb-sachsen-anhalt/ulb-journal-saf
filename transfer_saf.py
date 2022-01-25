@@ -9,7 +9,7 @@
 import logging
 import paramiko
 from pathlib import Path
-from paramiko.client import SSHClient
+from paramiko.client import SSHClient, AutoAddPolicy
 
 logging.basicConfig(
     level=logging.INFO,
@@ -55,6 +55,7 @@ class TransferSAF:
             logger.info(f'connect ssh {self.server}')
         client = paramiko.SSHClient()
         client.load_system_host_keys()
+        client.set_missing_host_key_policy(AutoAddPolicy())
         try:
             client.connect(
                 self.server,
