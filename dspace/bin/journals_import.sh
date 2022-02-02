@@ -3,7 +3,9 @@
 #set -e
 
 echo "------------------------------------------------------------------------------"
-echo "Version 0.2.0"
+echo "Version 0.2.1"
+echo "import SAF to dspace"
+echo "------------------------------------------------------------------------------"
 ####
 #docker exec --user dspace  dspace2_dspace_1 /opt/dspace/repo/bin/dspace import --delete --eperson <email importer> --mapfile
 #  run this script from host cli:
@@ -81,8 +83,10 @@ function import_saf() {
 # we loop over zips in "$saf" folder and call import_saf function for every file
 for saf in "$safs"/*
     do
-        safname=$(basename -- "$saf")
-        import_saf "$safname"
+        if test -f "$saf"; then
+            safname=$(basename -- "$saf")
+            import_saf "$safname"
+        fi
     done
 
 # now we read all resulting map files and extract data in order to build 
@@ -94,5 +98,8 @@ for saf in "$safs"/*
         echo "open $mapfile"
         if test -f "$mapfile"; then
            get_handle "$mapfile"
+           # finally we delete imported SAF zip
+           rm -v "$saf"
         fi
+
     done
