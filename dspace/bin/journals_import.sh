@@ -99,7 +99,7 @@ for saf in "$safs"/*
         if test -f "$mapfile"; then
            get_handle "$mapfile"
            # finally we delete imported SAF zip
-           rm -v "$saf"
+           rm -vf "$saf"
         fi
 
     done
