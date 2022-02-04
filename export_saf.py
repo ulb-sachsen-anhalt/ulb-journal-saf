@@ -110,9 +110,22 @@ class ExportSAF:
 
                 if isinstance(value, str) and\
                         (value.count('<') and value.count('>')):
+                    # parse html input
                     soup = BeautifulSoup(value, features="html.parser")
-                    value = soup.get_text()
-                    value = value.replace('& ', '&amp; ')
+                    # value = soup.get_text()
+                    # value = value.replace('& ', '&amp; ')
+                    value = soup.get_text().replace('& ', '&amp; ')
+
+                # special treatment for multiple entries
+                if k == "dc.contributor.author":
+                    if isinstance(value, list):
+                        for auth in value:
+                            first = auth['givenName'][locale]
+                            family = auth['familyName'][locale]
+                            value = f"{first} {family}"
+                            schema_dict.setdefault(
+                                schema, []).append((value, *meta_tpl), )
+                    continue
 
             if value:
                 schema_dict.setdefault(
