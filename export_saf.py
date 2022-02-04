@@ -122,7 +122,7 @@ class ExportSAF:
                         for auth in value:
                             first = auth['givenName'][locale]
                             family = auth['familyName'][locale]
-                            value = f"{first} {family}"
+                            value = f"{family}, {first}"
                             schema_dict.setdefault(
                                 schema, []).append((value, *meta_tpl), )
                     continue
