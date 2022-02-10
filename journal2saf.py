@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import sys
 import logging
 import argparse
 import warnings
@@ -95,12 +96,12 @@ class DataPoll():
     def determine_done(self):
         self.processed = {}
         try:
-            export = [f for f in Path(self.export_path).iterdir()
-                      if f.is_file()]
+            paths = Path(self.export_path).iterdir()
+            export_done = [f for f in paths if f.is_file()]
         except FileNotFoundError as err:
             logger.error(f'export path failure {err}')
-            exit()
-        for file_ in export:
+            sys.exit(1)
+        for file_ in export_done:
             parts = re.split('[_.]', file_.name)
             publication_id = parts[3]
             submission_file_id = parts[7]
@@ -231,6 +232,38 @@ class DataPoll():
                         issue_detail = self._server_request(issue_request)
                         subm_data.update(issue_detail)
 
+                    omp = 'publicationFormats' in publication:
+                        
+                    file_records = publication['publicationFormats'] if omp else publication['galley']
+
+                    for index, record in enumerate(file_records):
+                        remote_url = record['urlRemote']
+                        if remote_url:
+                            logger.debug(
+                                f"remote_url already set for {publ_href}"
+                                f" ({remote_url}), continue")
+                            # the galley['urlRemote'] is already set!
+                            # no further processing is required
+                            del publication['galleys'][index]
+                            continue
+
+                        if omp:
+                            file_id = self.getSubmissionFileId(href, assocId)
+                            record['submissionFileId'] = file_id
+                        else:    
+                            file_id = str(record['submissionFileId'])
+                        
+                        publ_id = str(record['publicationId'])
+
+                        if publ_id == self.processed.get(file_id):
+                            logger.info(f'file exists in export {publ_href}')
+                            continue
+                        if omp:
+                           subm_data['publicationFormat'] = record
+                        else:        
+                            subm_data['galley'] = record
+
+                    """    
                     # this loop is only for OJS
                     galleys = publication.get('galleys', [])
                     for index, galley in enumerate(galleys):
@@ -240,13 +273,13 @@ class DataPoll():
                                 f"remote_url already set for {publ_href}"
                                 f" ({remote_url}), continue")
                             # the galley['urlRemote'] is already set!
-                            # no further processing is rquired
+                            # no further processing is required
                             del publication['galleys'][index]
                             continue
                         file_id = str(galley['submissionFileId'])
                         publ_id = str(galley['publicationId'])
                         if publ_id == self.processed.get(file_id):
-                            logger.info(f'file exist in export {publ_href}')
+                            logger.info(f'file exists in export {publ_href}')
                             continue
                         subm_data['galley'] = galley
 
@@ -259,7 +292,7 @@ class DataPoll():
                                 f"remote_url already set for {publ_href}"
                                 f" ({remote_url}), continue")
                             # publicationFormat['urlRemote'] is already set!
-                            # no further processing is rquired
+                            # no further processing is required
                             del publication['publicationFormats'][index]
                             continue
                         assocId = str(publ_format['id'])
@@ -269,9 +302,10 @@ class DataPoll():
                         publ_format['submissionFileId'] = file_id
                         publ_id = str(publ_format['publicationId'])
                         if publ_id == self.processed.get(file_id):
-                            logger.info(f'file exist in export {publ_href}')
+                            logger.info(f'file exists in export {publ_href}')
                             continue
                         subm_data['publicationFormat'] = publ_format
+                    """    
                 subm.update(subm_data)
                 subm_ob = Submission(subm, publisher)
                 publisher.submissions.append(subm_ob)
@@ -284,8 +318,6 @@ def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    # dp.serialise_data(1, 2)
-    # dp.serialise_data(0, 1)
     dp.serialise_data()
     dp._reques_submissions()
     dp._request_contexts()
@@ -349,13 +381,13 @@ if __name__ == "__main__":
 
     if not pathlib.Path(conf).exists():
         print(f"{now} [ERROR] Missing config '{conf}'! Halt execution!")
-        exit(1)
+        sys.exit(1)
     else:
         print(f"{now} [INFO] use configuration file at {conf}")
     if not pathlib.Path(conf_meta).exists():
         print(f"{now} [ERROR] Missing META-config '{conf_meta}'! "
               "Halt execution!")
-        exit(1)
+        sys.exit(1)
     else:
         print(f"{now} [INFO] use META-configuration file at {conf_meta}")
 
