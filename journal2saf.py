@@ -232,9 +232,10 @@ class DataPoll():
                         issue_detail = self._server_request(issue_request)
                         subm_data.update(issue_detail)
 
-                    omp = 'publicationFormats' in publication:
-                        
-                    file_records = publication['publicationFormats'] if omp else publication['galley']
+                    omp = 'publicationFormats' in publication
+
+                    file_records = publication['publicationFormats'] if omp\
+                        else publication['galleys']
 
                     for index, record in enumerate(file_records):
                         remote_url = record['urlRemote']
@@ -242,28 +243,29 @@ class DataPoll():
                             logger.debug(
                                 f"remote_url already set for {publ_href}"
                                 f" ({remote_url}), continue")
-                            # the galley['urlRemote'] is already set!
+                            # the record['urlRemote'] is already set!
                             # no further processing is required
-                            del publication['galleys'][index]
+                            del file_records[index]
                             continue
 
                         if omp:
+                            assocId = str(record['id'])
                             file_id = self.getSubmissionFileId(href, assocId)
                             record['submissionFileId'] = file_id
-                        else:    
+                        else:
                             file_id = str(record['submissionFileId'])
-                        
+
                         publ_id = str(record['publicationId'])
 
                         if publ_id == self.processed.get(file_id):
                             logger.info(f'file exists in export {publ_href}')
                             continue
                         if omp:
-                           subm_data['publicationFormat'] = record
-                        else:        
+                            subm_data['publicationFormat'] = record
+                        else:
                             subm_data['galley'] = record
 
-                    """    
+                    """
                     # this loop is only for OJS
                     galleys = publication.get('galleys', [])
                     for index, galley in enumerate(galleys):
@@ -305,7 +307,7 @@ class DataPoll():
                             logger.info(f'file exists in export {publ_href}')
                             continue
                         subm_data['publicationFormat'] = publ_format
-                    """    
+                    """
                 subm.update(subm_data)
                 subm_ob = Submission(subm, publisher)
                 publisher.submissions.append(subm_ob)
