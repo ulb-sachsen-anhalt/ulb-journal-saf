@@ -265,49 +265,6 @@ class DataPoll():
                         else:
                             subm_data['galley'] = record
 
-                    """
-                    # this loop is only for OJS
-                    galleys = publication.get('galleys', [])
-                    for index, galley in enumerate(galleys):
-                        remote_url = galley['urlRemote']
-                        if remote_url:
-                            logger.debug(
-                                f"remote_url already set for {publ_href}"
-                                f" ({remote_url}), continue")
-                            # the galley['urlRemote'] is already set!
-                            # no further processing is required
-                            del publication['galleys'][index]
-                            continue
-                        file_id = str(galley['submissionFileId'])
-                        publ_id = str(galley['publicationId'])
-                        if publ_id == self.processed.get(file_id):
-                            logger.info(f'file exists in export {publ_href}')
-                            continue
-                        subm_data['galley'] = galley
-
-                    # this loop is only for OMP
-                    publ_formats = publication.get('publicationFormats', [])
-                    for index, publ_format in enumerate(publ_formats):
-                        remote_url = publ_format['urlRemote']
-                        if remote_url:
-                            logger.debug(
-                                f"remote_url already set for {publ_href}"
-                                f" ({remote_url}), continue")
-                            # publicationFormat['urlRemote'] is already set!
-                            # no further processing is required
-                            del publication['publicationFormats'][index]
-                            continue
-                        assocId = str(publ_format['id'])
-                        # 'submissionFileId' is not part of OMP
-                        # publicationFormats set, so we need some extra effort
-                        file_id = self.getSubmissionFileId(href, assocId)
-                        publ_format['submissionFileId'] = file_id
-                        publ_id = str(publ_format['publicationId'])
-                        if publ_id == self.processed.get(file_id):
-                            logger.info(f'file exists in export {publ_href}')
-                            continue
-                        subm_data['publicationFormat'] = publ_format
-                    """
                 subm.update(subm_data)
                 subm_ob = Submission(subm, publisher)
                 publisher.submissions.append(subm_ob)
@@ -320,7 +277,7 @@ def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data()
+    dp.serialise_data(1,2)
     dp._reques_submissions()
     dp._request_contexts()
     return dp
