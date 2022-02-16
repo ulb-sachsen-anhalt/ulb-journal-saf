@@ -142,6 +142,10 @@ class DataPoll():
             query_publishers = self.rest_call_contexts(offset)
             batch_ = self._server_request(query_publishers)
             logger.info([publ['urlPath'] for publ in batch_['items']])
+            for item in batch_['items']:
+                _href = item['_href']
+                batch_extra_data = self._server_request(_href)
+                item.update(batch_extra_data)
             self.items.extend(batch_['items'])
             allitems = batch_['itemsMax']
             offset = len(self.items)
@@ -277,7 +281,7 @@ def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data(1,2)
+    dp.serialise_data(1, 2)
     dp._reques_submissions()
     dp._request_contexts()
     return dp
