@@ -151,10 +151,8 @@ class DataPoll():
             offset = len(self.items)
         logger.info(F'got all published items ({len(self.items)}), done...')
 
-    def serialise_data(self, start=0, end=None) -> None:
+    def serialise_data(self, start=0, end=-1) -> None:
         logger.info(f"process {len(self.items)} publishers")
-        if end is None:
-            end = len(self.items)
         for index, data in enumerate(self.items[start:end]):
             publisher = Publisher(data)
             self.publishers.append(publisher)
