@@ -91,6 +91,9 @@ class RetrieveDOI:
                         f"{export_path}/{doifile}"
                         )
                     logger.info(f"got file --> {doifile}")
+                    ftp_client.remove(f"{self.doi_path}/{doifile}")
+                    logger.info(f"delete remote --> {doifile}")
+
             if count_done > 0:
                 logger.info(f"{count_done} DOI files already processed")
             client.close()

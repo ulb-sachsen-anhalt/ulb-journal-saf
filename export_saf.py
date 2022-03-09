@@ -163,7 +163,12 @@ class ExportSAF:
             filename = '{}_{}_{}{}'.format(
                 context.url_path, publication_id,
                 submission_file_id, extension)
-
+            try:
+                cd = response.headers.get('Content-Disposition')
+                filename = cd.split('"')[1]
+                filename = filename.replace(' ', '_')
+            except Exception:
+                logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
 
             with open(export_path, 'wb') as fh:
@@ -179,17 +184,17 @@ class ExportSAF:
             self, context, work_dir, submission) -> list:
         publication = submission.publication
         context_url = context.url
-        galleys = publication['publicationFormats']
+        pubformats = publication['publicationFormats']
 
         filenames = []
-        for galley in galleys:
-            galley_id = galley['id']
+        for pubformat in pubformats:
+            format_id = pubformat['id']
             submission_id = submission.submissionId
-            publication_id = galley['publicationId']
+            publication_id = pubformat['publicationId']
 
-            submission_file_id = galley['submissionFileId']
+            submission_file_id = pubformat['submissionFileId']
             url = "{}/catalog/download/{}/{}/{}".format(
-                context_url, submission_id, galley_id, submission_file_id)
+                context_url, submission_id, format_id, submission_file_id)
 
             logger.debug(f'download file: {url}')
             response = requests.get(url, verify=False)
@@ -197,12 +202,17 @@ class ExportSAF:
             if status_code != 200:
                 logger.error(f'error download file code:{status_code} {url}')
                 continue
-            mime_type = response.headers['content-type']
+            mime_type = response.headers.get('content-type')
             extension = mimetypes.guess_extension(mime_type)
             filename = '{}_{}_{}{}'.format(
                 context.url_path, publication_id,
                 submission_file_id, extension)
-
+            try:
+                cd = response.headers.get('Content-Disposition')
+                filename = cd.split('"')[1]
+                filename = filename.replace(' ', '_')
+            except Exception:
+                logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
 
             with open(export_path, 'wb') as fh:
