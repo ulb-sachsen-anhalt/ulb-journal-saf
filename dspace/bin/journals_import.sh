@@ -23,7 +23,10 @@ dspace="/opt/dspace/repo/bin/dspace"
 safs="/opt/dspace/repo/infrastructure/$1/source/"
 maps="/opt/dspace/repo/infrastructure/$1/map/"
 dois="/opt/dspace/repo/infrastructure/$1/doi/"
+
 eperson="axel.bauer@bibliothek.uni-halle.de"
+eperson="shareit.admin@bibliothek.uni-halle.de"
+
 
 function write_doi() {
         doifilename=$1
