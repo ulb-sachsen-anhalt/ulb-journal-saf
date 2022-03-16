@@ -1,21 +1,31 @@
 # Harvesting OJS/OMP Journals and Books
 
 
-Das Python Script _journal2saf.py_ ruft von einem [OMP](https://pkp.sfu.ca/omp) bzw. [OJS](https://pkp.sfu.ca/ojs/) Server alle relevanten Daten von **publizierten** Journalen/Monographien über das  [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3) ab.
-Haben die Fahnen eine externe URL (urlRemote), werden sie ignoriert!
+Im ersten Schritt ruft das Python Script _journal2saf.py_ von einem [OMP](https://pkp.sfu.ca/omp) bzw. [OJS](https://pkp.sfu.ca/ojs/) Server alle relevanten Daten von **publizierten** Journalen/Monographien über das  [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3) ab.
+Haben die "Fahnen" eine externe URL (urlRemote), werden sie ignoriert!
 
-Aus den Daten werden DSpace lesbare [SAF Archive](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt.
+Aus den Daten werden DSpace lesbare [SAF Archive](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt und im konfigurierten export Ordner abgelegt.
 
-Im Projekt befindet sich außerdem ein bash Script, mit dessen Hilfe ein unabhängiger automatischer Import der SAF's und ein Export der vergebenen [DOI's](https://www.doi.org/) angestoßen wird.
+Im zweiten Schritt werden alle erzeugten SAF Archive auf den Zielserver DSpace in ein vereinbartes Verzeichnis (Austauschordner) kopiert.
 
-Bei jedem Export neuer SAF Archive überprüft _journal2saf.py_, ob DOI Daten von bereits importierten SAF's erstellt worden sind und kopiert diese in das export Verzeichnis.
+Im Projekt befindet sich außerdem ein bash Script, mit dessen Hilfe ein unabhängiger automatischer Import der SAF's und ein Export der vergebenen [DOI's](https://www.doi.org/)  auf dem DSpace Server angestoßen wird.
 
-Die DOI's hinterlegt _journal2saf.py_ im OJS/OMP als *urlRemote* Attribut für jede Veröffentlichung.
+DSpace Verzeichnisstruktur:
+<pre>
+~/&lt;austauschordner>/source
+~/&lt;austauschordner>/doi
+~/&lt;austauschordner>/map
+</pre>
+
+
+Bei jedem kopieren neuer SAF Archive überprüft _journal2saf.py_, ob DOI Daten von bereits importierten SAF's erstellt worden sind und kopiert diese in das export Verzeichnis.
+
+In einem dritten Schritt hinterlegt _journal2saf.py_ die DOI's im OJS/OMP als *urlRemote* Attribut für jede Veröffentlichung.
 
 ## Ziel
 
 Regelmäßige automatische Veröffentlichung der Publikationen aus OJS/OMP im DSpace Repositorium.
-DOI Anmeldung durch DSpace und Übermittlung der DOI ins OJS/OMP.
+DOI Anmeldung durch DSpace und Eintragung der DOI ins OJS/OMP.
 
 ## Setup
 
@@ -42,7 +52,7 @@ pytest -v
 ### *conf/config_meta.ini*
 In der _config_meta.ini_ werden die Daten, die OJS/OMP zu Verfügung stellt, in entsprechende XML Dateien gespeichert.
 Die Daten können beliebig erweitert werden, sofern ein gültiger Wert im API Request geliefert wird.
-Statische Werte müssen in Anführungstriche gesetzt werden.
+Statische Werte müssen in Anführungstriche gesetzt werdenn und werden nicht ausgewertet.
 
 ### *conf/config.ini*
 Diese Datei bitte aus der *conf/config.ini.example* durch umbennen erstellen.
