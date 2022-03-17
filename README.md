@@ -54,7 +54,7 @@ pytest -v
 
 ## Konfiguration
 ### *conf/config_meta.ini*
-In der _config_meta.ini_ werden, die Metadaten die OJS/OMP zur Verfügung stellt, für den Export in die entsprechende XML Dateien vermerkt.
+In der _config_meta.ini_ werden, die Metadaten, die OJS/OMP zur Verfügung stellt, für den Export in die entsprechenden XML Dateien vermerkt.
 Die Daten können beliebig erweitert werden, sofern ein gültiger Wert im API Request geliefert wird.
 Statische Werte müssen in Anführungstriche gesetzt werden und werden nicht ausgewertet.Beispieldateien für OMP und OJS liegen im Ordner ./_conf_.
 
