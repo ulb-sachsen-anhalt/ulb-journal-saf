@@ -16,7 +16,10 @@ Aus den Daten werden DSpace lesbare [SAF Archive](https://wiki.lyrasis.org/displ
 Im zweiten Schritt werden alle erzeugten SAF Archive automatisch über _scp_ auf den Zielserver DSpace, in ein vereinbartes Verzeichnis (Austauschordner) kopiert. 
 
 Im Projekt befindet sich außerdem ein bash Script, mit dessen Hilfe ein unabhängiger automatischer Import der SAF's und ein Export der vergebenen [DOI's](https://www.doi.org/)  auf dem DSpace Server angestoßen wird.
-<pre>./dspace/bin/journals_import.sh</pre>
+
+<pre>
+ ./dspace/bin/journals_import.sh
+</pre>
 
 Verzeichnisstruktur auf dem DSpace:
 <pre>
@@ -36,7 +39,7 @@ Hierfür muss das OJS/OMP Plugin SetRemoteUrlPlugin installiert sein.
 Python >= 3.6 ist notwendig.
 Dieses Project clonen und in das Verzeichnis wechseln.
 
-```
+<pre>
 python3 -m venv venv
 
 # windows
@@ -46,11 +49,11 @@ source venv/bin/activate
 
 pip install --upgrade pip
 pip install -r requirements.txt
-```
+</pre>
 Tests ausführen:
-```
+<pre>
 pytest -v
-```
+</pre>
 
 ## Konfiguration
 ### *conf/config_meta.ini*
@@ -65,9 +68,9 @@ Alle Werte sind in der Datei kommentiert.
 ## Start Export(SAF) / Import(DOI)
 Das Script wird idealerweise von einem Cronjob aufgerufen.
 
-```
+<pre>
 python journal2saf.py -c ./conf/config.ini -m ./conf/config_meta_ojs.ini
-```
+</pre>
  
 
 
