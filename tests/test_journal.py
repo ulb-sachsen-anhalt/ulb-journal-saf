@@ -56,7 +56,7 @@ def test_serialise_data(configuration):
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()
     assert isinstance(dp.publishers, list)
-    assert len(dp.publishers) == 2
+    assert len(dp.publishers) == 1
 
 
 def _server_request(a):
@@ -74,4 +74,4 @@ def test_request_issues(configuration):
     dp.serialise_data()
     dp._server_request = _server_request
     dp.rest_call_issue('url', 1)
-    assert(len(dp.publishers)) == 2
+    assert(len(dp.publishers)) == 1
