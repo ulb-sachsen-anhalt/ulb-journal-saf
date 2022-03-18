@@ -2,7 +2,9 @@
 
 import re
 import sys
+import time
 import logging
+import logging.config
 import argparse
 import warnings
 import requests
@@ -26,11 +28,14 @@ CONFIG = "conf/config.ini"
 CONFIG_META = "conf/config_meta.ini"
 ###############################################################
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
+LOG_FILE_FORMAT = '%Y-%m-%d'
+date_ = time.strftime(LOG_FILE_FORMAT, time.localtime())
+logfile_name = Path("log", f"http_record_handler_{date_}.log")
+conf_logname = {'logname': logfile_name}
 
-logger = logging.getLogger(__file__.split('/')[-1])
+logging.config.fileConfig('conf/logging.conf', defaults=conf_logname)
+logger = logging.getLogger('journals-logging-handler')
+
 
 CP = ConfigParser()
 # preserving capital letters with monkey patch
