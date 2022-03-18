@@ -12,10 +12,12 @@ conf/config.ini
 export/
 export_omp/
 export_ojs/
+log
 
 # local test confs
 conf/config_local_omp.ini
 conf/config_local_ojs.ini
+conf/config_dspacedev_ojs.ini
 conf/config.omp.ini
 dspace/bin/delete_import.sh
 authorized_keys
