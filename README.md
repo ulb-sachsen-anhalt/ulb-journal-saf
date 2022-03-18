@@ -9,9 +9,9 @@ DOI Anmeldung durch DSpace und Eintragung der DOI ins OJS/OMP.
 
 ## Export/Import SAF, DOI Eintrag im Journal 
 
-Im ersten Schritt ruft das Python Script _journal2saf.py_ von einem [OMP](https://pkp.sfu.ca/omp) bzw. [OJS](https://pkp.sfu.ca/ojs/) Server alle relevanten Daten von **publizierten** Journalen/Monographien über das  [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3) ab. Den Ressourcen (_Fahnen_) eines jeden Journals, kann eine externe URLs ([urlRemote](https://docs.pkp.sfu.ca/dev/api/ojs/3.1#tag/Submissions/paths/~1submissions~1{submissionId}/get)) zugewiesen werden. 
+Im ersten Schritt ruft das Python Script _journal2saf.py_ von einem [OMP](https://pkp.sfu.ca/omp) bzw. [OJS](https://pkp.sfu.ca/ojs/) Server alle relevanten Daten von **publizierten** Journalen/Monographien über das  [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3) ab. 
 
-Aus den Daten werden DSpace lesbare [SAF Archive](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt und im konfigurierten export Ordner abgelegt.
+Aus den Daten werden DSpace importierbare [SAF Archive](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt und im konfigurierten export Ordner abgelegt.
 
 Im zweiten Schritt werden alle erzeugten SAF Archive automatisch über _scp_ auf den Zielserver DSpace, in ein vereinbartes Verzeichnis (Austauschordner) kopiert. 
 
@@ -29,7 +29,10 @@ Verzeichnisstruktur auf dem DSpace:
 </pre>
 
 
-Bei jedem Kopieren neuer SAF Archive überprüft _journal2saf.py_, ob DOI Daten von bereits importierten SAF's erstellt worden sind und kopiert diese in das export Verzeichnis auf dem Publikations Server.
+Bei jedem Kopieren neuer SAF Archive überprüft _journal2saf.py_, ob DOI Daten von bereits importierten SAF's erstellt worden sind und kopiert diese in das export Verzeichnis auf dem Publikations Server.  
+
+&#9755; Jeder Ressource (_Fahne_) eines Journals, kann eine externe URL ([urlRemote](https://docs.pkp.sfu.ca/dev/api/ojs/3.1#tag/Submissions/paths/~1submissions~1{submissionId}/get)) zugewiesen werden.
+
 
 In einem dritten Schritt hinterlegt _journal2saf.py_ die DOI's im OJS/OMP als *urlRemote* Attribut für jede Veröffentlichung.
 Hierfür muss das OJS/OMP Plugin SetRemoteUrlPlugin installiert sein. 
