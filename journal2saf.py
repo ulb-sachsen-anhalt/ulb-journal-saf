@@ -13,10 +13,10 @@ from datetime import datetime
 from pathlib import Path
 from configparser import ConfigParser
 
-from export_saf import ExportSAF
-from copy_saf import CopySAF
-from retrieve_doi import RetrieveDOI
-from write_remote_url import WriteRemoteUrl
+import export_saf as export_saf_module
+import copy_saf as copy_saf_module
+import retrieve_doi as retrieve_doi_module
+import write_remote_url as write_remote_url_module
 
 warnings.filterwarnings(
     'ignore', message='Unverified HTTPS request')
@@ -142,18 +142,28 @@ class DataPoll():
     def _request_publishers(self) -> None:
         allitems = 1
         offset = 0
-        self.items = []
+        items = []
         while allitems > offset:
             query_publishers = self.rest_call_contexts(offset)
             batch_ = self._server_request(query_publishers)
-            logger.info([publ['urlPath'] for publ in batch_['items']])
+            logger.info(
+                f"Itmes: {[publ['urlPath'] for publ in batch_['items']]}")
+
             for item in batch_['items']:
                 _href = item['_href']
                 batch_extra_data = self._server_request(_href)
                 item.update(batch_extra_data)
-            self.items.extend(batch_['items'])
+            items.extend(batch_['items'])
             allitems = batch_['itemsMax']
-            offset = len(self.items)
+            offset = len(items)
+        if WHITE:
+            items = list(filter(lambda w: w['urlPath'] in WHITE, items))
+            logger.info(f"filter white-list {WHITE}")
+        if BLACK:
+            items = list(filter(lambda b: b['urlPath'] not in BLACK, items))
+            logger.info(f"filter black-list {BLACK}")
+        logger.info(f"after filter {[b['urlPath'] for b in items]}")
+        self.items = items
         logger.info(F'got all published items ({len(self.items)}), done...')
 
     def serialise_data(self, start=0, end=-1) -> None:
@@ -222,6 +232,7 @@ class DataPoll():
                 if subm['status'] != STATUS_PUBLISHED:
                     not_published += 1
                     continue
+                print()
                 published += 1
                 subm_data = self._server_request(subm['_href'])
                 href = subm.get('_href')
@@ -284,41 +295,41 @@ def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data(1, 2)
+    dp.serialise_data(0, 1)
     dp._reques_submissions()
     dp._request_contexts()
     return dp
 
 
-def export_saf(dp: DataPoll) -> None:
-    exportsaf = ExportSAF(dp.publishers, CP)
+def export_saf_archive(dp: DataPoll) -> None:
+    exportsaf = export_saf_module.ExportSAF(dp.publishers, CP)
     exportsaf.export()
     exportsaf.write_zips()
 
 
-def copy_saf(CP: ConfigParser) -> None:
-    copysaf = CopySAF(CP)
+def copy_saf() -> None:
+    copysaf = copy_saf_module.CopySAF(CP)
     copysaf.copy()
 
 
-def retrieve_doi(CP: ConfigParser) -> None:
-    retrievedoi = RetrieveDOI(CP)
+def retrieve_doi() -> None:
+    retrievedoi = retrieve_doi_module.RetrieveDOI(CP)
     doi_done = retrievedoi.determine_done()
     retrievedoi.retrieve_files(doi_done)
 
 
-def write_remote_url(CP: ConfigParser) -> None:
-    writeremoteurl = WriteRemoteUrl(CP)
+def write_remote_url() -> None:
+    writeremoteurl = write_remote_url_module.WriteRemoteUrl(CP)
     writeremoteurl.write()
 
 
 def main() -> None:
     start = datetime.now()
     datapoll = data_poll()
-    export_saf(datapoll)
-    copy_saf(CP)
-    retrieve_doi(CP)
-    write_remote_url(CP)
+    export_saf_archive(datapoll)
+    copy_saf()
+    retrieve_doi()
+    write_remote_url()
 
     end = datetime.now()
     logger.info(f"Elapsed time: {str(end-start).split('.')[0]}")
@@ -359,7 +370,10 @@ if __name__ == "__main__":
 
     CP.read(conf)
     CP.read(conf_meta)
-
+    WHITE = CP.get('white-list', 'journals', fallback='').split()
+    BLACK = CP.get('black-list', 'journals', fallback='').split()
+    WHITE and print(f"{now} [INFO] use white list: {WHITE}")
+    BLACK and print(f"{now} [INFO] use black list: {BLACK}")
     if args['verbose']:
         logger.setLevel(level=logging.DEBUG)
 
