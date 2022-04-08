@@ -2,13 +2,15 @@
     # what system we are using: 'omp' or 'ojs'
     system = ojs
     # your OJS/OMP Server 
-    journal_server = <https://ojs.example.com>
     # token from your OJS/OMP (generate/copy with/from WEB-GUI)
     api_token = <token>
     endpoint_contexts = /api/v1/contexts?isEnabled=true
+    endpoint_submissions = /api/v1/submissions
     endpoint_issues = /api/v1/issues
+    journal_server = <https://ojs.example.com>
     # Monograph / Article
     type = Article
+    token = <some auto generated token in SetRemoteUrlPlugin>
 
 [export]
     # store zip (SAFs) files here
@@ -17,6 +19,8 @@
     collection = 123456789/26132
     # if you write back the DOI to OJS/OMP, this will be the prefix 
     doi_prefix = http://dx.doi.org/
+    # True / False filename of galleys should be auto generated 
+    generate_filename = True
 
 [scp]
     # you need to activate server access via ssh-key
@@ -34,7 +38,7 @@
     server_zipsource = /opt/dspace-test/volumes/infrastructure/ojs_omp/source/
     server_doifiles = /opt/dspace-test/volumes/infrastructure/ojs_omp/doi/
 
-    ## following is only for direct dsspace docker access 
+    ## following is only for direct Dspace docker access 
     ## you need to activate/include the module *transfer_saf.py*
     # dspace executable
     # eperson = omp@example.com
