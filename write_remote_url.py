@@ -6,11 +6,7 @@ import requests
 
 from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
-
-logger = logging.getLogger(__file__.split('/')[-1])
+logger = logging.getLogger('journals-logging-handler')
 
 
 class WriteRemoteUrl:
