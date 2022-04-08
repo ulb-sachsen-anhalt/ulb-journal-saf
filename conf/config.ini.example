@@ -42,5 +42,10 @@
     # docker_mapfile = /opt/dspace/repo/infrastructure/ojs_omp/map/
     # docker_zipsource = /opt/dspace/repo/infrastructure/ojs_omp/source/
     # extra = --disable_inheritance
-    
 
+#  filter journals, monographs from treating
+[white-list]
+    journals = name_of_journal1
+
+[black-list]
+    journals = name_of_journal2 name_of_journal3
