@@ -31,7 +31,7 @@ class ExportSAF:
         self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
         self.type = g['type']
-        self.dc_identifier_external_prefix = g['system']
+        self.generate_filename = e.get('generate_filename', fallback=False)
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
@@ -203,12 +203,13 @@ class ExportSAF:
             filename = '{}_{}_{}{}'.format(
                 context.url_path, publication_id,
                 submission_file_id, extension)
-            try:
-                cd = response.headers.get('Content-Disposition')
-                filename = cd.split('"')[1]
-                filename = self.clean_filename(filename)
-            except Exception:
-                logger.warning(f'could not extract filename from {cd}')
+            if not self.generate_filename:
+                try:
+                    cd = response.headers.get('Content-Disposition')
+                    filename = cd.split('"')[1]
+                    filename = self.clean_filename(filename)
+                except Exception:
+                    logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
 
             with open(export_path, 'wb') as fh:
