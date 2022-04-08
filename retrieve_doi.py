@@ -6,14 +6,11 @@ import warnings
 from pathlib import Path
 from paramiko.client import SSHClient, AutoAddPolicy
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
-
-logger = logging.getLogger(__file__.split('/')[-1])
 
 warnings.filterwarnings(
     'ignore', message='Unverified HTTPS request')
+
+logger = logging.getLogger('journals-logging-handler')
 
 
 class RetrieveDOI:
