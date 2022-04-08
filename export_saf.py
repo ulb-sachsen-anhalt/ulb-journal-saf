@@ -31,7 +31,7 @@ class ExportSAF:
         self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
         self.type = g['type']
-        self.generate_filename = e.get('generate_filename', fallback=False)
+        self.generate_filename = e.getboolean('generate_filename', fallback=False)
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
@@ -145,7 +145,6 @@ class ExportSAF:
             galley_id = galley['id']
             mime_type = galley['file']['mimetype']
             submission_id = galley['file']['submissionId']
-            publication_id = galley['publicationId']
             extension = mimetypes.guess_extension(mime_type)
             submission_file_id = galley['submissionFileId']
             url = "{}/article/download/{}/{}/{}".format(
@@ -156,15 +155,15 @@ class ExportSAF:
             if status_code != 200:
                 logger.error(f'error download file code:{status_code} {url}')
                 continue
-            filename = '{}_{}_{}{}'.format(
-                context.url_path, publication_id,
-                submission_file_id, extension)
-            try:
-                cd = response.headers.get('Content-Disposition')
-                filename = cd.split('"')[1]
-                filename = self.clean_filename(filename)
-            except Exception:
-                logger.warning(f'could not extract filename from {cd}')
+            filename = '{}_volume_{}{}'.format(
+                context.url_path, submission.volume, extension)
+            if not self.generate_filename:
+                try:
+                    cd = response.headers.get('Content-Disposition')
+                    filename = cd.split('"')[1]
+                    filename = self.clean_filename(filename)
+                except Exception:
+                    logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
 
             with open(export_path, 'wb') as fh:
@@ -186,8 +185,6 @@ class ExportSAF:
         for pubformat in pubformats:
             format_id = pubformat['id']
             submission_id = submission.submissionId
-            publication_id = pubformat['publicationId']
-
             submission_file_id = pubformat['submissionFileId']
             url = "{}/catalog/download/{}/{}/{}".format(
                 context_url, submission_id, format_id, submission_file_id)
@@ -200,9 +197,8 @@ class ExportSAF:
                 continue
             mime_type = response.headers.get('content-type')
             extension = mimetypes.guess_extension(mime_type)
-            filename = '{}_{}_{}{}'.format(
-                context.url_path, publication_id,
-                submission_file_id, extension)
+            filename = '{}_volume_{}{}'.format(
+                context.url_path, submission.seriesPosition, extension)
             if not self.generate_filename:
                 try:
                     cd = response.headers.get('Content-Disposition')
