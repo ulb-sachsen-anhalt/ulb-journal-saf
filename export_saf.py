@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-import shutil
+import sys
+import string
 import logging
+import shutil
 import mimetypes
 import pycountry
 from pathlib import Path
@@ -9,12 +11,7 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)-5s %(message)s')
-
-logger = logging.getLogger(__file__.split('/')[-1])
+logger = logging.getLogger('journals-logging-handler')
 
 
 class ExportSAF:
@@ -34,7 +31,7 @@ class ExportSAF:
         self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
         self.type = g['type']
-        self.dc_identifier_external_prefix = 'ojs'  # TODO: use config
+        self.dc_identifier_external_prefix = g['system']
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
@@ -82,7 +79,7 @@ class ExportSAF:
         # eval-call will use following variables
         context = submission.parent
         language = self.locale2isolang(locale)
-        logger.debug(f"{context} {language}")
+        logger.debug(f"{context.url_path} {language}")
         pages = submission.publication.get('pages', 0)
         pagestart = pageend = pages
         try:
@@ -126,7 +123,6 @@ class ExportSAF:
                             schema_dict.setdefault(
                                 schema, []).append((value, *meta_tpl), )
                     continue
-
             if value:
                 schema_dict.setdefault(
                     schema, []).append((value, *meta_tpl), )
@@ -166,7 +162,7 @@ class ExportSAF:
             try:
                 cd = response.headers.get('Content-Disposition')
                 filename = cd.split('"')[1]
-                filename = filename.replace(' ', '_')
+                filename = self.clean_filename(filename)
             except Exception:
                 logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
@@ -210,7 +206,7 @@ class ExportSAF:
             try:
                 cd = response.headers.get('Content-Disposition')
                 filename = cd.split('"')[1]
-                filename = filename.replace(' ', '_')
+                filename = self.clean_filename(filename)
             except Exception:
                 logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
@@ -223,6 +219,11 @@ class ExportSAF:
                     f'size: {Path(export_path).stat().st_size >> 20} Mb')
                 filenames.append(filename)
         return filenames
+
+    @staticmethod
+    def clean_filename(filename):
+        pct = string.punctuation.replace('.', '') + ' '
+        return "".join(c for c in filename if c not in pct)
 
     def export(self) -> None:
         for context in self.contexts:
@@ -258,8 +259,8 @@ class ExportSAF:
     def write_zips(self) -> None:
         export_pth = Path(self.export_path)
         if not export_pth.is_dir():
-            logger.info(f"Path not found -> '{export_pth}', stop export")
-            exit()
+            logger.info(f"export path not found ->'{export_pth}', stop export")
+            sys.exit(1)
         contexts = [d for d in export_pth.iterdir() if d.is_dir()]
         size_abs = 0
         for context in contexts:
@@ -268,21 +269,27 @@ class ExportSAF:
                 logger.debug(f'zip folder at {item}')
                 submission_file_id = list(item.iterdir())[0].name
                 name = f'{context.name}_{item.name}_{submission_file_id}'
-                already_done = Path(export_pth / (name+'.zip.done'))
+                already_done = Path(export_pth / (name + '.zip.done'))
                 if already_done.is_file():
                     logger.debug(
-                        f'{already_done} is alredy transfered, skip...')
+                        f'{already_done} is already transfered, skip...')
+                    if already_done.stat().st_size > 0:
+                        open(already_done, "w").close()
+                        logger.info('empty file content to save space')
                     continue
                 zipfile = shutil.make_archive(
                     export_pth / name, 'zip', item)
                 zipsize = Path(zipfile).stat().st_size
                 size_abs += zipsize
-                logger.info(f'write zip file {name}.zip '
-                            f'with {zipsize >> 20} Mb')
+                fsize = zipsize >> 20 and "str(zipsize >> 20) Mb"\
+                    or str(zipsize) + " bytes"
+                logger.info(f"write zip file {name}.zip with {fsize}")
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
             shutil.rmtree(context)
         if size_abs:
-            logger.info(f'finally wrote {size_abs >> 20} Mb, done...')
+            fsizeabs = size_abs >> 20 and "str(size_abs >> 20) Mb"\
+                    or str(size_abs) + " bytes"
+            logger.info(f'finally wrote {fsizeabs}, done...')
         else:
             logger.info('nothing to write, exit')
