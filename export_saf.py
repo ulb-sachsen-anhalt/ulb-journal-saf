@@ -31,7 +31,8 @@ class ExportSAF:
         self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
         self.type = g['type']
-        self.generate_filename = e.getboolean('generate_filename', fallback=False)
+        self.generate_filename = e.getboolean(
+            'generate_filename', fallback=False)
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
