@@ -357,13 +357,14 @@ if __name__ == "__main__":
     now = str(datetime.now())
 
     if not pathlib.Path(conf).exists():
-        print(f"{now} [ERROR] Missing config '{conf}'! Halt execution!")
+        print(f"{now} [ERROR] Missing config '{conf} "
+              "or parameter -c with config path, Halt execution!")
         sys.exit(1)
     else:
         print(f"{now} [INFO] use configuration file at {conf}")
     if not pathlib.Path(conf_meta).exists():
         print(f"{now} [ERROR] Missing META-config '{conf_meta}'! "
-              "Halt execution!")
+              "or parameter -m with config path, Halt execution!")
         sys.exit(1)
     else:
         print(f"{now} [INFO] use META-configuration file at {conf_meta}")
