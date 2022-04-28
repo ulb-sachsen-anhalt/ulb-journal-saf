@@ -166,9 +166,9 @@ class DataPoll():
         self.items = items
         logger.info(F'got all published items ({len(self.items)}), done...')
 
-    def serialise_data(self, start=0, end=-1) -> None:
+    def serialise_data(self) -> None:
         logger.info(f"process {len(self.items)} publishers")
-        for index, data in enumerate(self.items[start:end]):
+        for data in self.items:
             publisher = Publisher(data)
             self.publishers.append(publisher)
 
@@ -295,7 +295,7 @@ def data_poll() -> DataPoll:
     dp = DataPoll(CP)
     dp.determine_done()
     dp._request_publishers()
-    dp.serialise_data(0, 1)
+    dp.serialise_data()
     dp._reques_submissions()
     dp._request_contexts()
     return dp
