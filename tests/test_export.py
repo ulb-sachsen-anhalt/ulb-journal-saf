@@ -4,7 +4,8 @@ import configparser
 from zipfile import ZipFile
 from pathlib import Path
 import pytest
-from journal2saf import ExportSAF, DataPoll
+from journal2saf import DataPoll
+from export_saf import ExportSAF
 from tests.ressources import publishers
 from tests.ressources import issue, issues
 
