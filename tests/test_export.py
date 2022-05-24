@@ -4,10 +4,11 @@ import configparser
 from zipfile import ZipFile
 from pathlib import Path
 import pytest
-from journal2saf import DataPoll
-from export_saf import ExportSAF
 from tests.ressources import publishers
 from tests.ressources import issue, issues
+from lib.export_saf import ExportSAF
+from lib.data_miner import DataPoll
+
 
 JURL = 'https://ojs.exampl.com'
 COLLECTION = '123456789/26132'
@@ -50,7 +51,7 @@ def download_galley(context, work_dir, issue):
 
 @pytest.fixture(name="contexts")
 def fixture_contexts(configuration):
-    dp = DataPoll(configuration)
+    dp = DataPoll(configuration, [], [])
     dp.submissions_dict = publishers.publisher
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()

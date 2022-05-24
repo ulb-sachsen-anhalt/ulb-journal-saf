@@ -2,7 +2,7 @@
 
 import pytest
 import configparser
-from journal2saf import DataPoll
+from lib.data_miner import DataPoll
 from tests.ressources import publishers
 from tests.ressources import issue, issues
 
@@ -34,7 +34,7 @@ def fixture_configuration():
 
 def test_s(configuration):
     """check if methode deliver valid call"""
-    dp = DataPoll(configuration)
+    dp = DataPoll(configuration, [], [])
     restcall = dp.rest_call_contexts(1)
     assert restcall.endswith('isEnabled=true')
 
@@ -43,7 +43,7 @@ def test_rest_call_issues(configuration):
     """check if methode deliver valid call"""
     journal_url = JURL
     journalid = '23'
-    dp = DataPoll(configuration)
+    dp = DataPoll(configuration, [], [])
     endpoint = "/api/v1/issues"
     dp.endpoint_issues = endpoint
     restcall = dp.rest_call_issue(journal_url, journalid)
@@ -51,7 +51,7 @@ def test_rest_call_issues(configuration):
 
 
 def test_serialise_data(configuration):
-    dp = DataPoll(configuration)
+    dp = DataPoll(configuration, [], [])
     dp.submissions_dict = publishers.publisher
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()
@@ -68,7 +68,7 @@ def _server_request(a):
 
 
 def test_request_issues(configuration):
-    dp = DataPoll(configuration)
+    dp = DataPoll(configuration, [], [])
     dp.submissions_dict = publishers.publisher
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()
