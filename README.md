@@ -40,7 +40,7 @@ Hierfür muss das OJS/OMP Plugin SetRemoteUrlPlugin installiert sein.
 ## Setup
 
 Python >= 3.6 ist notwendig.
-Dieses Project clonen und in das Verzeichnis wechseln.
+Dieses Projekt clonen und in das Verzeichnis wechseln.
 
 <pre>
 python3 -m venv venv
