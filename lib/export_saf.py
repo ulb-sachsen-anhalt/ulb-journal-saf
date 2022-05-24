@@ -235,6 +235,10 @@ class ExportSAF:
                         f'no {filerecordname} found for publisher_id '
                         f'{submission.parent.publisher_id} '
                         f'submission id {submission.id}')
+                    self.report.setdefault(
+                        filerecordname, []).append(
+                            submission.parent.publisher_id)
+
                     continue
                 submission_file_id = filerecord['submissionFileId']
                 publication_id = filerecord['publicationId']

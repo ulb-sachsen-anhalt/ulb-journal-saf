@@ -55,6 +55,8 @@ class TaskDispatcher:
         self.start = None
         self.end = None
         self.datapoll = None
+        self.errors = []
+        self.report = {}
 
     def start_dispatcher(self) -> None:
         self.start = datetime.now()
@@ -87,6 +89,7 @@ class TaskDispatcher:
     def export_saf_archive(self) -> None:
         publishers = self.datapoll.publishers
         exportsaf = ExportSAF(publishers, CP)
+        exportsaf.report = self.report
         exportsaf.export()
         exportsaf.write_zips()
 
@@ -111,6 +114,7 @@ def main() -> None:
     dispatcher.stop_dispatcher()
     delta = str(dispatcher.end - dispatcher.start)
     logger.info(f"Elapsed time: {delta.split('.')[0]}")
+    print(dispatcher.report)
 
 
 if __name__ == "__main__":
