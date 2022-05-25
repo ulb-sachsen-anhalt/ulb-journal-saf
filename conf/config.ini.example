@@ -13,6 +13,8 @@
     token = <some auto generated token in SetRemoteUrlPlugin>
     # update remote_url with DOI in OJS/OMP
     update_remote = True
+    # path where to write logfiles
+    logpath = log/
 
 [export]
     # store zip (SAFs) files here
