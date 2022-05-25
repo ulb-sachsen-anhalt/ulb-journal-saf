@@ -61,6 +61,13 @@ class DataPoll():
         BLACK = blacklist
         self.publishers = []
         self.load_config(configparser)
+        self._report = {}
+
+    def get_report(self):
+        return self._report
+
+    def add_report(self, key, value):
+        self._report.setdefault(key, []).append(value)
 
     def load_config(self, configparser) -> None:
         g = configparser['general']
@@ -79,6 +86,7 @@ class DataPoll():
             export_done = [f for f in paths if f.is_file()]
         except FileNotFoundError as err:
             logger.error(f'export path failure {err}')
+            self.add_report('ERROR', err)
             sys.exit(1)
         for file_ in export_done:
             parts = re.split('[_.]', file_.name)
@@ -183,8 +191,9 @@ class DataPoll():
 
     def _reques_submissions(self) -> None:
         for publisher in self.publishers:
+            url_path = publisher.url_path
             logger.debug('#' * 100)
-            logger.debug(publisher.url_path)
+            logger.debug(url_path)
             logger.debug('#' * 100)
             url = publisher.url
             allsubmission = 1
@@ -195,23 +204,21 @@ class DataPoll():
                 query_submissions = self.rest_call_submissions(
                     publisher.url, offset)
                 logger.debug(
-                    f'request submission for {publisher.url_path}:'
+                    f'request submission for {url_path}:'
                     f' {query_submissions}')
                 batch_ = self._server_request(query_submissions)
                 submissions_dict['items'].extend(batch_['items'])
                 allsubmission = batch_['itemsMax']
                 offset = len(submissions_dict['items'])
             logger.info(
-                f'request all submissions for {publisher.url_path}')
+                f'request all submissions for {url_path}')
             logger.info(
                 'got {} issues'.format(len(submissions_dict['items'])))
 
             for subm in submissions_dict['items']:
-                print('.', end='')
                 if subm['status'] != STATUS_PUBLISHED:
                     not_published += 1
                     continue
-                print()
                 published += 1
                 subm_data = self._server_request(subm['_href'])
                 href = subm.get('_href')
@@ -242,6 +249,10 @@ class DataPoll():
                                 f" ({remote_url}), continue")
                             # the record['urlRemote'] is already set!
                             # no further processing is required
+                            publ_href_tail = publ_href.split('/', 3)[-1]
+                            self.add_report(
+                                f'{url_path}: remote_url already set for:',
+                                publ_href_tail)
                             del file_records[index]
                             continue
 

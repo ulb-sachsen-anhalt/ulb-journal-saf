@@ -19,6 +19,13 @@ class RetrieveDOI:
     def __init__(self, configparser) -> None:
         self.load_config(configparser)
         self.client = None
+        self._report = {}
+
+    def get_report(self):
+        return self._report
+
+    def add_report(self, key, value):
+        self._report.setdefault(key, []).append(value)
 
     def load_config(self, configparser) -> None:
         s = configparser['scp']
@@ -42,14 +49,16 @@ class RetrieveDOI:
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(AutoAddPolicy())
+        server_ = self.server
         try:
             client.connect(
-                self.server,
+                server_,
                 username=self.user,
                 key_filename=self.key_filename)
         except Exception as err:
             logger.error(err)
-            logger.info(f"is sshd running on {self.server}?")
+            logger.info(f"is sshd running on {server_}?")
+            self.add_report(f'error ssh:{server_}', err)
             return None
         self.client = client
         return client
@@ -75,6 +84,7 @@ class RetrieveDOI:
                     doifiles = ftp_client.listdir(self.doi_path)
                 except FileNotFoundError as err:
                     logger.error(f'{self.doi_path} not found remote, {err}')
+                    self.add_report('remote not found', self.doi_path)
                     exit()
                 if not doifiles:
                     logger.info("no new DOI files")

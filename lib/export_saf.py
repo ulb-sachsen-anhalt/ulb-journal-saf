@@ -33,6 +33,13 @@ class ExportSAF:
         self.type = g['type']
         self.generate_filename = e.getboolean(
             'generate_filename', fallback=False)
+        self._report = {}
+
+    def get_report(self):
+        return self._report
+
+    def add_report(self, key, value):
+        self._report.setdefault(key, []).append(value)
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
@@ -155,6 +162,7 @@ class ExportSAF:
             status_code = response.status_code
             if status_code != 200:
                 logger.error(f'error download file code:{status_code} {url}')
+                self.add_report(f'error download file code:{status_code}', url)
                 continue
             filename = '{}_volume_{}{}'.format(
                 context.url_path, submission.volume, extension)
@@ -195,6 +203,7 @@ class ExportSAF:
             status_code = response.status_code
             if status_code != 200:
                 logger.error(f'error download file code:{status_code} {url}')
+                self.add_report(f'error download file code:{status_code}', url)
                 continue
             mime_type = response.headers.get('content-type')
             extension = mimetypes.guess_extension(mime_type)
@@ -235,10 +244,10 @@ class ExportSAF:
                         f'no {filerecordname} found for publisher_id '
                         f'{submission.parent.publisher_id} '
                         f'submission id {submission.id}')
-                    self.report.setdefault(
-                        filerecordname, []).append(
-                            submission.parent.publisher_id)
-
+                    self.add_report(
+                        (f'{context_name}: no {filerecordname} found '
+                         '(publisher_id, submission_id) '),
+                        (submission.parent.publisher_id, submission.id,))
                     continue
                 submission_file_id = filerecord['submissionFileId']
                 publication_id = filerecord['publicationId']
@@ -283,14 +292,14 @@ class ExportSAF:
                     export_pth / name, 'zip', item)
                 zipsize = Path(zipfile).stat().st_size
                 size_abs += zipsize
-                fsize = zipsize >> 20 and "str(zipsize >> 20) Mb"\
+                fsize = zipsize >> 20 and str(zipsize >> 20) + " Mb"\
                     or str(zipsize) + " bytes"
                 logger.info(f"write zip file {name}.zip with {fsize}")
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
             shutil.rmtree(context)
         if size_abs:
-            fsizeabs = size_abs >> 20 and "str(size_abs >> 20) Mb"\
+            fsizeabs = size_abs >> 20 and str(size_abs >> 20) + " Mb"\
                     or str(size_abs) + " bytes"
             logger.info(f'finally wrote {fsizeabs}, done...')
         else:

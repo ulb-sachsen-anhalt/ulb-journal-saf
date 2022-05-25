@@ -15,6 +15,13 @@ class WriteRemoteUrl:
     def __init__(self, configparser) -> None:
         self.load_config(configparser)
         self.client = None
+        self._report = {}
+
+    def get_report(self):
+        return self._report
+
+    def add_report(self, key, value):
+        self._report.setdefault(key, []).append(value)
 
     def load_config(self, configparser) -> None:
         e = configparser['export']
@@ -46,6 +53,7 @@ class WriteRemoteUrl:
                           'token': self.token}
                 result = requests.get(
                     url=self.journal_server, params=params, verify=False)
+
                 if result.status_code == 200:
                     logger.info(
                         f'successfully committed remote_url {remote_url} '
@@ -54,7 +62,10 @@ class WriteRemoteUrl:
                     doi.rename(done)
                     count_doi_set += 1
                     logger.debug(f'rename DOI file to {done}')
+                    self.add_report('rename DOI file to', done)
                 else:
                     logger.error(f'rename DOI file to failed {result.reason}')
+                    self.add_report('rename DOI file to failed', result.reason)
+
         if count_doi_set:
             logger.info(f"{count_doi_set} DOIs successfully set")
