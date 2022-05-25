@@ -7,6 +7,7 @@ import logging.config
 import argparse
 import warnings
 import pathlib
+from pprint import pprint
 from datetime import datetime
 from pathlib import Path
 from configparser import ConfigParser
@@ -26,12 +27,6 @@ CONFIG = "conf/config.ini"
 CONFIG_META = "conf/config_meta.ini"
 ###############################################################
 
-LOG_FILE_FORMAT = '%Y-%m-%d'
-date_ = time.strftime(LOG_FILE_FORMAT, time.localtime())
-logfile_name = Path("log", f"http_record_handler_{date_}.log")
-conf_logname = {'logname': logfile_name}
-
-logging.config.fileConfig('conf/logging.conf', defaults=conf_logname)
 logger = logging.getLogger('journals-logging-handler')
 
 
@@ -44,7 +39,7 @@ class TaskDispatcher:
     """dispatching following tasks:
        * Ask OJS/OMP api for publications
        * Create objects of all _new_ publications
-       * download file data (gallays/publication formats)
+       * download file data (galleys/publicationFormats)
        * create ZIP's according to definition of import format SAF
        * push SAF's to Dspace Server
        * retrieve DOI's form Dspace
@@ -55,7 +50,6 @@ class TaskDispatcher:
         self.start = None
         self.end = None
         self.datapoll = None
-        self.errors = []
         self.report = {}
 
     def start_dispatcher(self) -> None:
@@ -69,13 +63,13 @@ class TaskDispatcher:
         self.export_saf_archive()
         self.copy_saf()
         writedoi = CP.getboolean('general', 'update_remote')
-        if writedoi:
-            logger.info('retrieve DOI')
-            self.retrieve_doi()
-            logger.info('write DOI')
-            self.write_remote_url()
-        else:
+        if not writedoi:
             logger.info('skip treating DOI (config)')
+            return
+        logger.info('retrieve DOI')
+        self.retrieve_doi()
+        logger.info('write DOI')
+        self.write_remote_url()
 
     def data_poll(self) -> None:
         dp = DataPoll(CP, WHITE, BLACK)
@@ -85,26 +79,30 @@ class TaskDispatcher:
         dp._reques_submissions()
         dp._request_contexts()
         self.datapoll = dp
+        self.report.update(dp.get_report())
 
     def export_saf_archive(self) -> None:
         publishers = self.datapoll.publishers
         exportsaf = ExportSAF(publishers, CP)
-        exportsaf.report = self.report
         exportsaf.export()
         exportsaf.write_zips()
+        self.report.update(exportsaf.get_report())
 
     def copy_saf(self) -> None:
         copysaf = CopySAF(CP)
         copysaf.copy()
+        self.report.update(copysaf.get_report())
 
     def retrieve_doi(self) -> None:
         retrievedoi = RetrieveDOI(CP)
         doi_done = retrievedoi.determine_done()
         retrievedoi.retrieve_files(doi_done)
+        self.report.update(retrievedoi.get_report())
 
     def write_remote_url(self) -> None:
         writeremoteurl = WriteRemoteUrl(CP)
         writeremoteurl.write()
+        self.report.update(writeremoteurl.get_report())
 
 
 def main() -> None:
@@ -113,8 +111,24 @@ def main() -> None:
     dispatcher.schedule()
     dispatcher.stop_dispatcher()
     delta = str(dispatcher.end - dispatcher.start)
-    logger.info(f"Elapsed time: {delta.split('.')[0]}")
-    print(dispatcher.report)
+    time_ = delta.split('.')[0]
+    logger.info(f"Elapsed time: {time_}")
+    dispatcher.report['elapsed time'] = time_
+    pprint(dispatcher.report)
+
+
+def init_logger():
+    logpath = CP.get('general', 'logpath', fallback='log')
+    LOG_FILE_FORMAT = '%Y-%m-%d'
+    date_ = time.strftime(LOG_FILE_FORMAT, time.localtime())
+    logfile_name = Path(logpath, f"http_record_handler_{date_}.log")
+    conf_logname = {'logname': logfile_name}
+    try:
+        logging.config.fileConfig(
+            'conf/logging.conf', defaults=conf_logname)
+    except FileNotFoundError as err:
+        print('check configuration!, '
+              'create path for logging: ', err)
 
 
 if __name__ == "__main__":
@@ -157,6 +171,9 @@ if __name__ == "__main__":
     BLACK = CP.get('black-list', 'journals', fallback='').split()
     WHITE and print(f"{now} [INFO] use white list: {WHITE}")
     BLACK and print(f"{now} [INFO] use black list: {BLACK}")
+
+    init_logger()
+
     if args['verbose']:
         logger.setLevel(level=logging.DEBUG)
 
