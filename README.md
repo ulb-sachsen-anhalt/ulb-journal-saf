@@ -1,46 +1,51 @@
-# Harvesting OJS/OMP Journals and Books
+# Harvesting of datasets from the ULB Sachsen-Anhalt's OJS/OMP installations to a DSpace based Repository
 
 
-## Ziel
+## General Goals 
 
-Regelmäßige automatische Veröffentlichung der Publikationen aus OJS/OMP im DSpace Repositorium.
-DOI Anmeldung durch DSpace und Eintragung der DOI ins OJS/OMP.
+Automatic publication of contents of OJS and OMP contents (journals, series, monographs) in a DSpace 6.3. Repository.
+DOI registration of exported contents via the DSpace repository.
+Return and adequate storage of the DOI metadata information into the OJS and OMP systems.
 
 
-## Export/Import SAF, DOI Eintrag im Journal 
 
-Im ersten Schritt ruft das Python Script _journal2saf.py_ von einem [OMP](https://pkp.sfu.ca/omp) bzw. [OJS](https://pkp.sfu.ca/ojs/) Server alle relevanten Daten von **publizierten** Journalen/Monographien über das  [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3) ab. 
+## 1. Metadata retrieval in OJS/OMP
 
-Aus den Daten werden DSpace importierbare [SAF Archive](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) erzeugt und im konfigurierten export Ordner abgelegt.
+In this first step the Python Script _journal2saf.py_ is used to get all relevant metadata for the contributions in a given [OMP](https://pkp.sfu.ca/omp) or [OJS](https://pkp.sfu.ca/ojs/) server which are marked already as **published** and that are to be sent to DSpace. This is done via the [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3). 
+ 
+## 2. Creation of SAF-Data Packages for the import and copying to DSpace
 
-Im zweiten Schritt werden alle erzeugten SAF Archive automatisch über _scp_ auf den Zielserver DSpace, in ein vereinbartes Verzeichnis (Austauschordner) kopiert. 
+This same script then converts the extracted data from OJS/OMP into the [SAF Archive](https://wiki.lyrasis.org/display/DSDOC5x/Importing+and+Exporting+Items+via+Simple+Archive+Format) format which is used by DSpace installations to import data into a standard DSpace collection. These data are saved in a previously defined export folder. 
 
-Im Projekt befindet sich außerdem ein bash Script, mit dessen Hilfe ein unabhängiger automatischer Import der SAF's und ein Export der vergebenen [DOI's](https://www.doi.org/)  auf dem DSpace Server angestoßen wird.
+Once in this folder, newly created SAF-Archive files are then copied using _scp_ to the target DSpace installation in a previously defined folder. 
+
+A bash script is then used to automatically import SAF files and also to export a list of all newly created [DOI's](https://www.doi.org/) by the DSpace installation which processes the new data files. This bash script is triggered in the DSpace server. 
 
 <pre>
  ./dspace/bin/journals_import.sh
 </pre>
 
-Verzeichnisstruktur auf dem DSpace:
+The following directory structure in DSpace is used:
 <pre>
 ~/&lt;austauschordner>/source
 ~/&lt;austauschordner>/doi
 ~/&lt;austauschordner>/map
 </pre>
 
+## 3. DOI Information checks in DSpace and storage in the metadaten schema of OJS/OMP
+Everytime new SAF files are copied into DSpace, the script _journal2saf.py_ checks if DOIs from SAF files which have been already imported are available in which case these get copied to the corresponding export folder in DSpace.
 
-Bei jedem Kopieren neuer SAF Archive überprüft _journal2saf.py_, ob DOI Daten von bereits importierten SAF's erstellt worden sind und kopiert diese in das export Verzeichnis auf dem Publikations Server.  
+### 
 
-&#9755; Jeder Ressource (_Fahne_) eines Journals, kann eine externe URL ([urlRemote](https://docs.pkp.sfu.ca/dev/api/ojs/3.1#tag/Submissions/paths/~1submissions~1{submissionId}/get)) zugewiesen werden.
+&#9755; For each ressource ((_a galley_ or _publicationFormat_) in OJS/OMP terminology) in a journal an external URL can be stored in the field ([urlRemote](https://docs.pkp.sfu.ca/dev/api/ojs/3.1#tag/Submissions/paths/~1submissions~1{submissionId}/get))
 
 
-In einem dritten Schritt hinterlegt _journal2saf.py_ die DOI's im OJS/OMP als *urlRemote* Attribut für jede Veröffentlichung.
-Hierfür muss das OJS/OMP Plugin SetRemoteUrlPlugin installiert sein. 
+The script _journal2saf.py_ ensures that the newly available DOIs are stored in OJS/OMP as *urlRemote* attribute for each publication. For this to work properly, the OJS/OMP Plugin [SetRemoteUrlPlugin](https://github.com/ulb-sachsen-anhalt/setRemoteUrlPlugin) must be previously installed.
+
 
 ## Setup
 
-Python >= 3.6 ist notwendig.
-Dieses Projekt clonen und in das Verzeichnis wechseln.
+Make sure you use Python 3.6 or higher. Clone the project and move into the appropriate directory as shown below:
 
 <pre>
 python3 -m venv venv
@@ -53,23 +58,30 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 </pre>
-Tests ausführen:
+A test should be carried out to ensure the setup has worked:
 <pre>
 pytest -v
 </pre>
 
+
+## Configuration
+
+### *conf/config_meta.ini*
+
+
 ## Konfiguration
 ### *conf/config_meta.ini*
-In der _config_meta.ini_ werden, die Metadaten, die OJS/OMP zur Verfügung stellt, für den Export in die entsprechenden XML Dateien vermerkt.
-Die Daten können beliebig erweitert werden, sofern ein gültiger Wert im API Request geliefert wird.
-Statische Werte müssen in Anführungstriche gesetzt werden und werden nicht ausgewertet.Beispieldateien für OMP und OJS liegen im Ordner ./_conf_.
+
+In the _config_meta.ini_ file, the metadata available from the OJS/OMP systems which ought to be exported in the corresponding XML files are marked. The schema can be expanded as required as long as values are used which are valid for the API request. 
+
+Static values need to be marked in quotation marks and these are then not read. The examples used in this project for the OJS and OMP installations are available in folder ./_conf_.
 
 ### *conf/config.ini*
-Diese Datei bitte aus der *conf/config.ini.example* durch umbennen erstellen.
-Alle Werte sind in der Datei kommentiert.
+Please create this file from the *conf/config.ini.example* by renaming it.
+All values are commented in the file.
 
 ## Start Export(SAF) / Import(DOI)
-Das Script wird idealerweise von einem Cronjob aufgerufen.
+The script is ideally called by a cronjob.
 
 <pre>
 python journal2saf.py -c ./conf/config.ini -m ./conf/config_meta_ojs.ini
@@ -82,4 +94,4 @@ python journal2saf.py -c ./conf/config.ini -m ./conf/config_meta_ojs.ini
 
 ## License
 
-siehe LICENSE Datei
+see the LICENSE file
