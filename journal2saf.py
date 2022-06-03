@@ -7,6 +7,8 @@ import logging.config
 import argparse
 import warnings
 import pathlib
+import smtplib
+from smtplib import SMTPException
 from datetime import datetime
 from pathlib import Path
 from configparser import ConfigParser
@@ -114,6 +116,22 @@ class TaskDispatcher:
         writeremoteurl = WriteRemoteUrl(CP, self.report)
         writeremoteurl.write()
 
+    def send_report(self):
+        receivers = None
+        if CP.has_section('email'):
+            receivers = CP.get('email', 'receivers')
+            sender = CP.get('email', 'sender')
+        if receivers:
+            for reciver in receivers.split():
+                try:
+                    smtpObj = smtplib.SMTP('localhost')
+                    smtpObj.sendmail(
+                        sender, receivers, self.report.report)
+                except (SMTPException, ConnectionRefusedError) as exc:
+                    logger.error('could not send report %s', exc)
+        else:
+            logger.info('no email found in config, skip')
+
 
 def main() -> None:
     dispatcher = TaskDispatcher()
@@ -122,7 +140,7 @@ def main() -> None:
     logger.info(f"Elapsed time: {delta}")
     dispatcher.report.add('elapsed time', delta)
     dispatcher.report.print()
-
+    dispatcher.send_report()
 
 def init_logger():
     logpath = CP.get('general', 'logpath', fallback='log')
