@@ -55,19 +55,14 @@ class DataPoll():
 
     def __init__(self,
                  configparser,
+                 report,
                  whitelist, blacklist) -> None:
         global WHITE, BLACK
         WHITE = whitelist
         BLACK = blacklist
         self.publishers = []
         self.load_config(configparser)
-        self._report = {}
-
-    def get_report(self):
-        return self._report
-
-    def add_report(self, key, value):
-        self._report.setdefault(key, []).append(value)
+        self.report = report
 
     def load_config(self, configparser) -> None:
         g = configparser['general']
@@ -86,7 +81,7 @@ class DataPoll():
             export_done = [f for f in paths if f.is_file()]
         except FileNotFoundError as err:
             logger.error(f'export path failure {err}')
-            self.add_report('ERROR', err)
+            self.report.add('ERROR', err)
             sys.exit(1)
         for file_ in export_done:
             parts = re.split('[_.]', file_.name)
@@ -249,9 +244,9 @@ class DataPoll():
                                 f" ({remote_url}), continue")
                             # the record['urlRemote'] is already set!
                             # no further processing is required
-                            publ_href_tail = publ_href.split('/', 3)[-1]
-                            self.add_report(
-                                f'{url_path}: remote_url already set for:',
+                            publ_href_tail = publ_href.split('/', 6)[-1]
+                            self.report.add(
+                                f'{url_path}: remote_url already set for',
                                 publ_href_tail)
                             del file_records[index]
                             continue

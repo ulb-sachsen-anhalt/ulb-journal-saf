@@ -17,9 +17,10 @@ logger = logging.getLogger('journals-logging-handler')
 class ExportSAF:
     """Export given data to -Simple Archive Format-"""
 
-    def __init__(self, contexts, configparser) -> None:
+    def __init__(self, configparser, report, contexts) -> None:
         self.contexts = contexts
         self.load_config(configparser)
+        self.report = report
 
     def load_config(self, configparser) -> None:
         e = configparser['export']
@@ -34,12 +35,6 @@ class ExportSAF:
         self.generate_filename = e.getboolean(
             'generate_filename', fallback=False)
         self._report = {}
-
-    def get_report(self):
-        return self._report
-
-    def add_report(self, key, value):
-        self._report.setdefault(key, []).append(value)
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
@@ -162,7 +157,7 @@ class ExportSAF:
             status_code = response.status_code
             if status_code != 200:
                 logger.error(f'error download file code:{status_code} {url}')
-                self.add_report(f'error download file code:{status_code}', url)
+                self.report.add(f'error download file code:{status_code}', url)
                 continue
             filename = '{}_volume_{}{}'.format(
                 context.url_path, submission.volume, extension)
@@ -203,7 +198,7 @@ class ExportSAF:
             status_code = response.status_code
             if status_code != 200:
                 logger.error(f'error download file code:{status_code} {url}')
-                self.add_report(f'error download file code:{status_code}', url)
+                self.report.add(f'error download file code:{status_code}', url)
                 continue
             mime_type = response.headers.get('content-type')
             extension = mimetypes.guess_extension(mime_type)
@@ -244,7 +239,7 @@ class ExportSAF:
                         f'no {filerecordname} found for publisher_id '
                         f'{submission.parent.publisher_id} '
                         f'submission id {submission.id}')
-                    self.add_report(
+                    self.report.add(
                         (f'{context_name}: no {filerecordname} found '
                          '(publisher_id, submission_id) '),
                         (submission.parent.publisher_id, submission.id,))

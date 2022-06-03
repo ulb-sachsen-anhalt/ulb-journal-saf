@@ -12,16 +12,10 @@ logger = logging.getLogger('journals-logging-handler')
 class WriteRemoteUrl:
     """Write property 'remote_url' on OJS server"""
 
-    def __init__(self, configparser) -> None:
+    def __init__(self, configparser, report) -> None:
         self.load_config(configparser)
         self.client = None
-        self._report = {}
-
-    def get_report(self):
-        return self._report
-
-    def add_report(self, key, value):
-        self._report.setdefault(key, []).append(value)
+        self.report = report
 
     def load_config(self, configparser) -> None:
         e = configparser['export']
@@ -62,10 +56,10 @@ class WriteRemoteUrl:
                     doi.rename(done)
                     count_doi_set += 1
                     logger.debug(f'rename DOI file to {done}')
-                    self.add_report('rename DOI file to', done)
+                    self.report.add('rename DOI file to', done)
                 else:
                     logger.error(f'rename DOI file to failed {result.reason}')
-                    self.add_report('rename DOI file to failed', result.reason)
+                    self.report.add('rename DOI file to failed', result.reason)
 
         if count_doi_set:
             logger.info(f"{count_doi_set} DOIs successfully set")

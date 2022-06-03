@@ -35,6 +35,19 @@ CP = ConfigParser()
 CP.optionxform = lambda option: option
 
 
+class Report:
+
+    def __init__(self):
+        self.report = {}
+
+    def add(self, key, value):
+        self.report.setdefault(key, []).append(value)
+
+    def print(self):
+        for k, v in sorted(self.report.items()):
+            print(f"{k}: {v}")
+
+
 class TaskDispatcher:
     """dispatching following tasks:
        * Ask OJS/OMP api for publications
@@ -47,18 +60,12 @@ class TaskDispatcher:
     """
 
     def __init__(self) -> None:
-        self.start = None
-        self.end = None
         self.datapoll = None
-        self.report = {}
-
-    def start_dispatcher(self) -> None:
-        self.start = datetime.now()
-
-    def stop_dispatcher(self) -> None:
-        self.end = datetime.now()
+        self.report = Report()
+        self.duration = 1
 
     def schedule(self) -> None:
+        start = datetime.now()
         self.data_poll()
         self.export_saf_archive()
         self.copy_saf()
@@ -68,53 +75,48 @@ class TaskDispatcher:
             return
         logger.info('retrieve DOI')
         self.retrieve_doi()
-        logger.info('write DOI')
         self.write_remote_url()
+        end = datetime.now()
+        delta = str(end - start)
+        self.duration = delta.split('.')[0]
 
     def data_poll(self) -> None:
-        dp = DataPoll(CP, WHITE, BLACK)
+        dp = DataPoll(CP, self.report, WHITE, BLACK)
         dp.determine_done()
         dp._request_publishers()
         dp.serialise_data()
         dp._reques_submissions()
         dp._request_contexts()
         self.datapoll = dp
-        self.report.update(dp.get_report())
 
     def export_saf_archive(self) -> None:
         publishers = self.datapoll.publishers
-        exportsaf = ExportSAF(publishers, CP)
+        exportsaf = ExportSAF(CP, self.report, publishers)
         exportsaf.export()
         exportsaf.write_zips()
-        self.report.update(exportsaf.get_report())
 
     def copy_saf(self) -> None:
-        copysaf = CopySAF(CP)
+        copysaf = CopySAF(CP, self.report)
         copysaf.copy()
-        self.report.update(copysaf.get_report())
 
     def retrieve_doi(self) -> None:
-        retrievedoi = RetrieveDOI(CP)
+        retrievedoi = RetrieveDOI(CP, self.report)
         doi_done = retrievedoi.determine_done()
         retrievedoi.retrieve_files(doi_done)
-        self.report.update(retrievedoi.get_report())
 
     def write_remote_url(self) -> None:
-        writeremoteurl = WriteRemoteUrl(CP)
+        logger.info('write DOI')
+        writeremoteurl = WriteRemoteUrl(CP, self.report)
         writeremoteurl.write()
-        self.report.update(writeremoteurl.get_report())
 
 
 def main() -> None:
     dispatcher = TaskDispatcher()
-    dispatcher.start_dispatcher()
     dispatcher.schedule()
-    dispatcher.stop_dispatcher()
-    delta = str(dispatcher.end - dispatcher.start)
-    time_ = delta.split('.')[0]
-    logger.info(f"Elapsed time: {time_}")
-    dispatcher.report['elapsed time'] = time_
-    pprint(dispatcher.report)
+    delta = dispatcher.duration
+    logger.info(f"Elapsed time: {delta}")
+    dispatcher.report.add('elapsed time', delta)
+    dispatcher.report.print()
 
 
 def init_logger():
