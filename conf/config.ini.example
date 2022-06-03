@@ -16,6 +16,11 @@
     # path where to write logfiles
     logpath = log/
 
+[email]
+    # configure here your mail information data
+    sender = test@example.com
+    receivers = r1@example.com  r3@example.com
+
 [export]
     # store zip (SAFs) files here
     export_path = ./export
