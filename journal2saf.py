@@ -49,7 +49,7 @@ class Report:
 
 class TaskDispatcher:
     """dispatching following tasks:
-       * Ask OJS/OMP api for publications
+       * Ask OJS/OMP API for publications
        * Create objects of all _new_ publications
        * download file data (galleys/publicationFormats)
        * create ZIP's according to definition of import format SAF
@@ -88,10 +88,10 @@ class TaskDispatcher:
     def data_poll(self) -> None:
         dp = DataPoll(CP, self.report, WHITE, BLACK)
         dp.determine_done()
-        dp._request_publishers()
+        dp.request_publishers()
         dp.serialise_data()
-        dp._reques_submissions()
-        dp._request_contexts()
+        dp.request_submissions()
+        dp.request_contexts()
         self.datapoll = dp
 
     def export_saf_archive(self) -> None:
