@@ -64,21 +64,27 @@ class TaskDispatcher:
         self.report = Report()
         self.duration = 1
 
-    def schedule(self) -> None:
-        start = datetime.now()
+    def gauge(func):
+        def to_time(self):
+            start = datetime.now()
+            func(self)
+            end = datetime.now()
+            delta = str(end - start)
+            self.duration = delta.split('.')[0]
+        return to_time
+
+    @gauge
+    def launch(self) -> None:
         self.data_poll()
         self.export_saf_archive()
         self.copy_saf()
-        writedoi = CP.getboolean('general', 'update_remote')
-        if not writedoi:
+        do_writedoi = CP.getboolean('general', 'update_remote')
+        if do_writedoi:
+            logger.info('retrieve DOI')
+            self.retrieve_doi()
+            self.write_remote_url()
+        else:
             logger.info('skip treating DOI (config)')
-            return
-        logger.info('retrieve DOI')
-        self.retrieve_doi()
-        self.write_remote_url()
-        end = datetime.now()
-        delta = str(end - start)
-        self.duration = delta.split('.')[0]
 
     def data_poll(self) -> None:
         dp = DataPoll(CP, self.report, WHITE, BLACK)
@@ -112,7 +118,7 @@ class TaskDispatcher:
 
 def main() -> None:
     dispatcher = TaskDispatcher()
-    dispatcher.schedule()
+    dispatcher.launch()
     delta = dispatcher.duration
     logger.info(f"Elapsed time: {delta}")
     dispatcher.report.add('elapsed time', delta)
