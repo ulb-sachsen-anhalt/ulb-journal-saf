@@ -10,7 +10,10 @@ logger = logging.getLogger('journals-logging-handler')
 
 
 class WriteRemoteUrl:
-    """Write property 'remote_url' on OJS server"""
+    """Write property 'remote_url' on OMP/OJS server
+       to achieve this, you need to install the 'setRemoteUrlPlugin'
+       on your OMP or OJS server
+    """
 
     def __init__(self, configparser, report) -> None:
         self.load_config(configparser)

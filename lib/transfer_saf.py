@@ -24,13 +24,7 @@ class TransferSAF:
     def __init__(self, configparser) -> None:
         self.load_config(configparser)
         self.client = None
-        self._report = {}
-
-    def get_report(self):
-        return self._report
-
-    def add_report(self, key, value):
-        self._report.setdefault(key, []).append(value)
+        self.report = {}
 
     def load_config(self, configparser) -> None:
         s = configparser['scp']
@@ -70,7 +64,7 @@ class TransferSAF:
                 key_filename=self.key_filename)
         except Exception as err:
             logger.error(err)
-            self.add_report('ERROR', err)
+            self.report.add('ERROR', err)
             return None
         self.client = client
         return client

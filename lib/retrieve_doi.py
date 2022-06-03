@@ -14,12 +14,11 @@ logger = logging.getLogger('journals-logging-handler')
 
 
 class RetrieveDOI:
-    """Retrieve DOI containing files form dspace server"""
+    """Retrieve DOI-containing files form dspace server"""
 
     def __init__(self, configparser, report) -> None:
         self.load_config(configparser)
         self.client = None
-        self._report = {}
         self.report = report
 
     def load_config(self, configparser) -> None:

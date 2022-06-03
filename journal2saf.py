@@ -7,7 +7,6 @@ import logging.config
 import argparse
 import warnings
 import pathlib
-from pprint import pprint
 from datetime import datetime
 from pathlib import Path
 from configparser import ConfigParser

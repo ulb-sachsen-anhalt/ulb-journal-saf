@@ -17,7 +17,6 @@ class CopySAF:
         self.client = None
         self.report = report
 
-
     def load_config(self, configparser) -> None:
         s = configparser['scp']
         ds = configparser['dspace']

@@ -34,7 +34,6 @@ class ExportSAF:
         self.type = g['type']
         self.generate_filename = e.getboolean(
             'generate_filename', fallback=False)
-        self._report = {}
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
