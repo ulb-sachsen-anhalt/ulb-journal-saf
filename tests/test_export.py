@@ -8,6 +8,7 @@ from tests.ressources import publishers
 from tests.ressources import issue, issues
 from lib.export_saf import ExportSAF
 from lib.data_miner import DataPoll
+from journal2saf import Report
 
 
 JURL = 'https://ojs.exampl.com'
@@ -51,7 +52,8 @@ def download_galley(context, work_dir, issue):
 
 @pytest.fixture(name="contexts")
 def fixture_contexts(configuration):
-    dp = DataPoll(configuration, [], [])
+    report = Report()
+    dp = DataPoll(configuration, report, [], [])
     dp.submissions_dict = publishers.publisher
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()
@@ -90,7 +92,8 @@ def test_write_collections_file(tmpdir):
 
 def test_write_zip(tmpdir, contexts, configuration):
     configuration.set('export', 'export_path', str(tmpdir))
-    saf = ExportSAF(contexts, configuration)
+    report = Report()
+    saf = ExportSAF(configuration, report, contexts)
     saf.download_galley = download_galley
     saf.export()
     saf.write_zips()

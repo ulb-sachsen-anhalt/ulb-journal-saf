@@ -3,6 +3,7 @@
 import pytest
 import configparser
 from lib.data_miner import DataPoll
+from journal2saf import Report
 from tests.ressources import publishers
 from tests.ressources import issue, issues
 
@@ -34,7 +35,8 @@ def fixture_configuration():
 
 def test_s(configuration):
     """check if methode deliver valid call"""
-    dp = DataPoll(configuration, [], [])
+    report = Report()
+    dp = DataPoll(configuration, report, [], [])
     restcall = dp.rest_call_contexts(1)
     assert restcall.endswith('isEnabled=true')
 
@@ -43,7 +45,8 @@ def test_rest_call_issues(configuration):
     """check if methode deliver valid call"""
     journal_url = JURL
     journalid = '23'
-    dp = DataPoll(configuration, [], [])
+    report = Report()
+    dp = DataPoll(configuration, report, [], [])
     endpoint = "/api/v1/issues"
     dp.endpoint_issues = endpoint
     restcall = dp.rest_call_issue(journal_url, journalid)
@@ -51,7 +54,8 @@ def test_rest_call_issues(configuration):
 
 
 def test_serialise_data(configuration):
-    dp = DataPoll(configuration, [], [])
+    report = Report()
+    dp = DataPoll(configuration, report, [], [])
     dp.submissions_dict = publishers.publisher
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()
@@ -68,7 +72,8 @@ def _server_request(a):
 
 
 def test_request_issues(configuration):
-    dp = DataPoll(configuration, [], [])
+    report = Report()
+    dp = DataPoll(configuration, report, [], [])
     dp.submissions_dict = publishers.publisher
     dp.items = dp.submissions_dict['items']
     dp.serialise_data()
