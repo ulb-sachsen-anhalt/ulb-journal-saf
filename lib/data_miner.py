@@ -116,7 +116,7 @@ class DataPoll():
             f"build contexts REST call: {rest_call}")
         return rest_call
 
-    def _request_publishers(self) -> None:
+    def request_publishers(self) -> None:
         allitems = 1
         offset = 0
         items = []
@@ -150,7 +150,7 @@ class DataPoll():
             publisher = Publisher(data)
             self.publishers.append(publisher)
 
-    def _request_contexts(self) -> None:
+    def request_contexts(self) -> None:
         for publisher in self.publishers:
             publisher_url = publisher._href
             context_dict = self._server_request(publisher_url)
@@ -184,7 +184,7 @@ class DataPoll():
             if fd['assocId'] == int(assocId):
                 return fd['id']
 
-    def _reques_submissions(self) -> None:
+    def request_submissions(self) -> None:
         for publisher in self.publishers:
             url_path = publisher.url_path
             logger.debug('#' * 100)
@@ -221,6 +221,8 @@ class DataPoll():
                 for publication in subm['publications']:
                     subm_data['publication'] = publication
                     publ_href = publication['_href']
+                    submission_id = subm['id']
+                    publication_id = subm['currentPublicationId']
                     publication_detail = self._server_request(publ_href)
                     subm_data.update(publication_detail)
 
@@ -244,10 +246,11 @@ class DataPoll():
                                 f" ({remote_url}), continue")
                             # the record['urlRemote'] is already set!
                             # no further processing is required
-                            publ_href_tail = publ_href.split('/', 6)[-1]
+                            publ_href_tail = (publication_id, submission_id)
+                            mess = ('remote_url already set for '
+                                    '(publication_id, submission_id)')
                             self.report.add(
-                                f'{url_path}: remote_url already set for',
-                                publ_href_tail)
+                                f'{url_path}: {mess}', publ_href_tail)
                             del file_records[index]
                             continue
 
