@@ -278,7 +278,8 @@ class ExportSAF:
                 if already_done.is_file():
                     logger.debug(
                         f'{already_done} is already transfered, skip...')
-                    self.report.add(f"{export_pth} already transfered", name) 
+                    self.report.add(
+                        f"{context.url_path} already transfered", name)
                     if already_done.stat().st_size > 0:
                         open(already_done, "w").close()
                         logger.info('empty file content to save space')
