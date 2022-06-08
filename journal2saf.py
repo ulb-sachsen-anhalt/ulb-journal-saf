@@ -37,6 +37,9 @@ CP.optionxform = lambda option: option
 
 
 class Report:
+    """Gather information from all modules during
+       they processing her tasks.
+    """
 
     def __init__(self):
         self.report = {}
@@ -74,18 +77,20 @@ class TaskDispatcher:
             self.duration = delta.split('.')[0]
         return to_time
 
+    def update_doi_constraint(func):
+        def check_and_proceed(self):
+            do_writedoi = CP.getboolean('general', 'update_remote')
+            if do_writedoi:
+                func(self)
+        return check_and_proceed
+
     @gauge
     def launch(self) -> None:
         self.data_poll()
         self.export_saf_archive()
         self.copy_saf()
-        do_writedoi = CP.getboolean('general', 'update_remote')
-        if do_writedoi:
-            logger.info('retrieve DOI')
-            self.retrieve_doi()
-            self.write_remote_url()
-        else:
-            logger.info('skip treating DOI (config)')
+        self.retrieve_doi()
+        self.write_remote_url()
 
     def data_poll(self) -> None:
         dp = DataPoll(CP, self.report, WHITE, BLACK)
@@ -106,11 +111,14 @@ class TaskDispatcher:
         copysaf = CopySAF(CP, self.report)
         copysaf.copy()
 
+    @update_doi_constraint
     def retrieve_doi(self) -> None:
+        logger.info('retrieve DOI')
         retrievedoi = RetrieveDOI(CP, self.report)
         doi_done = retrievedoi.determine_done()
         retrievedoi.retrieve_files(doi_done)
 
+    @update_doi_constraint
     def write_remote_url(self) -> None:
         logger.info('write DOI')
         writeremoteurl = WriteRemoteUrl(CP, self.report)
@@ -122,11 +130,12 @@ class TaskDispatcher:
             receivers = CP.get('email', 'receivers')
             sender = CP.get('email', 'sender')
         if receivers:
-            for reciver in receivers.split():
+            for receiver in receivers.split():
+                logger.info('try send report to %s', receiver)
                 try:
                     smtpObj = smtplib.SMTP('localhost')
                     smtpObj.sendmail(
-                        sender, receivers, self.report.report)
+                        sender, receiver, self.report.report)
                 except (SMTPException, ConnectionRefusedError) as exc:
                     logger.error('could not send report %s', exc)
         else:
@@ -141,6 +150,7 @@ def main() -> None:
     dispatcher.report.add('elapsed time', delta)
     dispatcher.report.print()
     dispatcher.send_report()
+
 
 def init_logger():
     logpath = CP.get('general', 'logpath', fallback='log')
@@ -160,9 +170,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description=("Request Journalserver(OJS/OMP)"
                      " and build SAF's of all published Submissions"))
-    parser.add_argument(
-        "-v", "--verbose", help="increase output verbosity",
-        action="store_true")
     parser.add_argument(
         "-c", required=False,
         default=CONFIG,
@@ -198,8 +205,5 @@ if __name__ == "__main__":
     BLACK and print(f"{now} [INFO] use black list: {BLACK}")
 
     init_logger()
-
-    if args['verbose']:
-        logger.setLevel(level=logging.DEBUG)
 
     main()
