@@ -158,12 +158,14 @@ def init_logger():
     date_ = time.strftime(LOG_FILE_FORMAT, time.localtime())
     logfile_name = Path(logpath, f"http_record_handler_{date_}.log")
     conf_logname = {'logname': logfile_name}
+    home_ = Path(__file__).parent.absolute()
+    print(f'{home_}/conf/logging.conf')
     try:
         logging.config.fileConfig(
-            'conf/logging.conf', defaults=conf_logname)
+            f'{home_}/conf/logging.conf', defaults=conf_logname)
     except FileNotFoundError as err:
-        print('check configuration!, '
-              'create path for logging: ', err)
+        print("check configuration 'general/logpath'!, "
+              "or create path for logging: ", err)
 
 
 if __name__ == "__main__":
