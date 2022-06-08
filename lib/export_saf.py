@@ -290,6 +290,7 @@ class ExportSAF:
                 fsize = zipsize >> 20 and str(zipsize >> 20) + " Mb"\
                     or str(zipsize) + " bytes"
                 logger.info(f"write zip file {name}.zip with {fsize}")
+                self.report.add("write zip file", f"{name}.zip")
                 if Path(zipfile).is_file():
                     shutil.rmtree(item)
             shutil.rmtree(context)
@@ -297,5 +298,6 @@ class ExportSAF:
             fsizeabs = size_abs >> 20 and str(size_abs >> 20) + " Mb"\
                     or str(size_abs) + " bytes"
             logger.info(f'finally wrote {fsizeabs}, done...')
+            self.report.add("finally wrote", fsizeabs)
         else:
             logger.info('nothing to write, exit')
