@@ -48,8 +48,10 @@ class Report:
         self.report.setdefault(key, []).append(value)
 
     def print(self):
+        print('############# report ###################')
         for k, v in sorted(self.report.items()):
             print(f"{k}: {v}")
+        print('############# report ###################')            
 
 
 class TaskDispatcher:
@@ -148,8 +150,8 @@ def main() -> None:
     delta = dispatcher.duration
     logger.info(f"Elapsed time: {delta}")
     dispatcher.report.add('elapsed time', delta)
-    dispatcher.report.print()
     dispatcher.send_report()
+    dispatcher.report.print()
 
 
 def init_logger():
