@@ -48,10 +48,10 @@ class Report:
         self.report.setdefault(key, []).append(value)
 
     def print(self):
-        print('############# report ###################')
+        print('################### report ###################')
         for k, v in sorted(self.report.items()):
             print(f"{k}: {v}")
-        print('############# report ###################')            
+        print('################### report ###################')
 
 
 class TaskDispatcher:
