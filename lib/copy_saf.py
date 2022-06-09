@@ -80,6 +80,7 @@ class CopySAF:
                 for file_ in files:
                     logger.info(f'transfer file {file_}')
                     logger.info(f"target: '{self.server_source}/{file_.name}")
+                    self.report.add('transfer files', file_.name)
                     ftp_client.put(
                         file_, f'{self.server_source}/{file_.name}',
                         callback=self.transferobserver)
