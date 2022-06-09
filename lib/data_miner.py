@@ -268,7 +268,7 @@ class DataPoll():
                         if publ_id == self.processed.get(file_id):
                             logger.info(
                                 f'file exists in export {publ_href}')
-                            self.report.add('file exists', {publ_href})
+                            self.report.add('file exists, no need to download', publ_href)
                             continue
                         if omp:
                             subm_data['publicationFormat'] = record
