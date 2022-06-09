@@ -139,7 +139,9 @@ class DataPoll():
         if BLACK:
             items = list(filter(lambda b: b['urlPath'] not in BLACK, items))
             logger.info(f"filter black-list {BLACK}")
-        logger.info(f"after filter {[b['urlPath'] for b in items]}")
+        paths_ = [b['urlPath'] for b in items]
+        logger.info(f"after filter {paths_}")
+        self.report.add('processed journals', paths_)
         self.items = items
         logger.info(
             f'got all published items ({len(self.items)}), done...')
@@ -178,7 +180,7 @@ class DataPoll():
             f"build issues REST call: {rest_call}")
         return rest_call
 
-    def getSubmissionFileId(self, href, assocId):
+    def get_submission_file_id(self, href, assocId):
         filesdata = self._server_request(href + '/files')
         for fd in filesdata['items']:
             if fd['assocId'] == int(assocId):
@@ -255,8 +257,8 @@ class DataPoll():
                             continue
 
                         if omp:
-                            assocId = str(record['id'])
-                            file_id = self.getSubmissionFileId(href, assocId)
+                            assoc = str(record['id'])
+                            file_id = self.get_submission_file_id(href, assoc)
                             record['submissionFileId'] = file_id
                         else:
                             file_id = str(record['submissionFileId'])
@@ -266,6 +268,7 @@ class DataPoll():
                         if publ_id == self.processed.get(file_id):
                             logger.info(
                                 f'file exists in export {publ_href}')
+                            self.report.add('file exists', {publ_href})
                             continue
                         if omp:
                             subm_data['publicationFormat'] = record

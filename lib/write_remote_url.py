@@ -55,11 +55,13 @@ class WriteRemoteUrl:
                     logger.info(
                         f'successfully committed remote_url {remote_url} '
                         f'with publication_id {publication_id} ')
+                    self.report.add(
+                        'successfully committed remote_url', remote_url)
                     done = doi.with_suffix(doi.suffix + '.done')
                     doi.rename(done)
                     count_doi_set += 1
-                    logger.debug(f'rename DOI file to {done}')
-                    self.report.add('rename DOI file to', done)
+                    logger.debug(f'rename DOI file to {done.resolve()}')
+                    self.report.add('rename DOI file to', done.resolve())
                 else:
                     logger.error(f'rename DOI file to failed {result.reason}')
                     self.report.add('rename DOI file to failed', result.reason)
