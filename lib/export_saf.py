@@ -239,7 +239,7 @@ class ExportSAF:
                         f'{submission.parent.publisher_id} '
                         f'submission id {submission.id}')
                     self.report.add(
-                        (f'{context_name}: no {filerecordname} found '
+                        (f'{context_name}: no {filerecordname} found for'
                          '(publisher_id, submission_id) '),
                         (submission.parent.publisher_id, submission.id,))
                     continue

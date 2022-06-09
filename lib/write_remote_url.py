@@ -61,7 +61,7 @@ class WriteRemoteUrl:
                     doi.rename(done)
                     count_doi_set += 1
                     logger.debug(f'rename DOI file to {done.resolve()}')
-                    self.report.add('rename DOI file to', done.resolve())
+                    self.report.add('rename DOI file to', str(done.resolve()))
                 else:
                     logger.error(f'rename DOI file to failed {result.reason}')
                     self.report.add('rename DOI file to failed', result.reason)
