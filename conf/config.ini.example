@@ -14,7 +14,7 @@
     # update remote_url with DOI in OJS/OMP
     update_remote = True
     # path where to write logfiles
-    logpath = log/
+    logpath = /home/<user>/log
 
 [email]
     # configure here your mail information data
@@ -23,7 +23,7 @@
 
 [export]
     # store zip (SAFs) files here
-    export_path = ./export
+    export_path = /home/<user>/export
     # collection in dspace (ask your Dspace Admin for this number)
     collection = 123456789/26132
     # if you write back the DOI to OJS/OMP, this will be the prefix 
