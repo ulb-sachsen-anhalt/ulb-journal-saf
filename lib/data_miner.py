@@ -141,7 +141,8 @@ class DataPoll():
             logger.info(f"filter black-list {BLACK}")
         paths_ = [b['urlPath'] for b in items]
         logger.info(f"after filter {paths_}")
-        self.report.add('processed journals', paths_)
+        for b in items:
+            self.report.add('processed journals', b['urlPath'])
         self.items = items
         logger.info(
             f'got all published items ({len(self.items)}), done...')
