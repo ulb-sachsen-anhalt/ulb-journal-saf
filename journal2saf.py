@@ -50,7 +50,8 @@ class Report:
     def print(self):
         print('################### report ###################')
         for k, v in self.report.items():
-            print(f"{k}: {', '.join(map(str, v))} ({len(v)})")
+            print(f"{k}: {', '.join(map(str, v))} "
+                  f"{'['+str(len(v))+']' if len(v)>1 else ''}")
         print('################### report ###################')
 
 
