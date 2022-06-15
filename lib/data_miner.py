@@ -6,7 +6,7 @@ import requests
 import logging
 from pathlib import Path
 
-PKP_STATUS_PUBLISHED = 3 # convention by PKP ojs/omp
+PKP_STATUS_PUBLISHED = 3  # convention by PKP ojs/omp
 STATE_PROCESSED = 'state_processed'
 STATE_SKIP = 'state_skip'
 
