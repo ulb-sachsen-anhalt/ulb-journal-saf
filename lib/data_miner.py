@@ -6,7 +6,9 @@ import requests
 import logging
 from pathlib import Path
 
-STATUS_PUBLISHED = 3
+PKP_STATUS_PUBLISHED = 3 # convention by PKP ojs/omp
+STATE_PROCESSED = 'state_processed'
+STATE_SKIP = 'state_skip'
 
 logger = logging.getLogger('journals-logging-handler')
 
@@ -214,7 +216,7 @@ class DataPoll():
                 'got {} issues'.format(len(submissions_dict['items'])))
 
             for subm in submissions_dict['items']:
-                if subm['status'] != STATUS_PUBLISHED:
+                if subm['status'] != PKP_STATUS_PUBLISHED:
                     not_published += 1
                     continue
                 published += 1
@@ -242,6 +244,7 @@ class DataPoll():
                         else publication['galleys']
 
                     for index, record in enumerate(file_records):
+                        record['state'] = None
                         remote_url = record['urlRemote']
                         if remote_url:
                             logger.debug(
@@ -254,7 +257,7 @@ class DataPoll():
                                     '(publication_id, submission_id)')
                             self.report.add(
                                 f'{url_path}: {mess}', publ_href_tail)
-                            del file_records[index]
+                            record['state'] = STATE_SKIP
                             continue
 
                         if omp:
@@ -268,10 +271,10 @@ class DataPoll():
 
                         if publ_id == self.processed.get(file_id):
                             logger.info(
-                                f'file exists in export {publ_href}')
+                                f'file exists in export {publ_href}, skip')
                             self.report.add(
-                                'file exists, no need to download', publ_href)
-                            continue
+                                'already processed submissions', submission_id)
+                            record['state'] = STATE_PROCESSED
                         if omp:
                             subm_data['publicationFormat'] = record
                         else:
