@@ -7,7 +7,7 @@ import shutil
 import mimetypes
 import pycountry
 from pathlib import Path
-
+from .data_miner import STATE_PROCESSED, STATE_SKIP
 import requests
 from bs4 import BeautifulSoup
 
@@ -172,8 +172,11 @@ class ExportSAF:
             with open(export_path, 'wb') as fh:
                 for chunk in response.iter_content(chunk_size=16*1024):
                     fh.write(chunk)
+                    print(".", end=(''))
+                else:
+                    print('')
                 logger.debug(
-                    f'download file at {url} '
+                    f'download galley file at {url} '
                     f'size: {Path(export_path).stat().st_size >> 20} Mb')
                 filenames.append(filename)
         return filenames
@@ -215,8 +218,11 @@ class ExportSAF:
             with open(export_path, 'wb') as fh:
                 for chunk in response.iter_content(chunk_size=16*1024):
                     fh.write(chunk)
+                    print(".", end=(''))
+                else:
+                    print('')
                 logger.debug(
-                    f'download file at {url} '
+                    f'download publicationFormat file at {url} '
                     f'size: {Path(export_path).stat().st_size >> 20} Mb')
                 filenames.append(filename)
         return filenames
@@ -237,9 +243,25 @@ class ExportSAF:
                     logger.info(
                         f'no {filerecordname} found for publisher_id '
                         f'{submission.parent.publisher_id} '
+                        f'submission id {submission.id} '
+                        '--> {submission.publishedUrl}')
+                    self.report.add(
+                        (f'{context_name}: no {filerecordname} found for'),
+                        submission.publishedUrl)
+                    continue
+                if filerecord['state'] == STATE_PROCESSED:
+                    logger.info(
+                        f'{filerecordname} already processed '
+                        f'{submission.parent.publisher_id} '
                         f'submission id {submission.id}')
                     self.report.add(
-                        (f'{context_name}: no {filerecordname} found for'
+                        (f'{context_name}: {filerecordname} already processed'
+                         '(publisher_id, submission_id) '),
+                        (submission.parent.publisher_id, submission.id,))
+                    continue
+                if filerecord['state'] == STATE_SKIP:
+                    self.report.add(
+                        (f'[{context_name}] remote_url set for'
                          '(publisher_id, submission_id) '),
                         (submission.parent.publisher_id, submission.id,))
                     continue
