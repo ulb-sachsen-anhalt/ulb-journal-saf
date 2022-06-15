@@ -11,10 +11,6 @@ import paramiko
 from pathlib import Path
 from paramiko.client import SSHClient, AutoAddPolicy
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)-5s %(name)s %(message)s')
-
 logger = logging.getLogger(__file__.split('/')[-1])
 
 
