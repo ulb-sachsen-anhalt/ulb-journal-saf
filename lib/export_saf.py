@@ -101,7 +101,9 @@ class ExportSAF:
                 value = v[1:-1]
             else:
                 value = eval(v)
-
+                if value == '':
+                    logger.warning("no value for %s", k)
+                    self.report.add("WARNING: no value for meta", k)
                 if isinstance(value, dict):
                     if locale in value:
                         value = value[locale]
