@@ -114,8 +114,8 @@ class ExportSAF:
                     # value = soup.get_text()
                     # value = value.replace('& ', '&amp; ')
                     value = soup.get_text().replace('& ', '&amp; ')\
-                        .replace('<', '&lh;')\
-                        .replace('>', '&gh;')\
+                        .replace('<', '&lt;')\
+                        .replace('>', '&gt;')\
 
                 # special treatment for multiple entries
                 if k == "dc.contributor.author":
