@@ -162,8 +162,9 @@ class ExportSAF:
                 logger.error(f'error download file code:{status_code} {url}')
                 self.report.add(f'error download file code:{status_code}', url)
                 continue
-            filename = '{}_volume_{}{}'.format(
-                context.url_path, submission.volume, extension)
+            filename = '{}_volume_{}_{}{}'.format(
+                context.url_path, submission.volume,
+                submission_file_id, extension)
             if not self.generate_filename:
                 try:
                     cd = response.headers.get('Content-Disposition')
@@ -240,52 +241,54 @@ class ExportSAF:
         for context in self.contexts:
             context_name = context.url_path
             for num, submission in enumerate(context.submissions):
-                filerecordname = 'galley' if self.system == 'ojs'\
-                    else 'publicationFormat'
-                filerecord = getattr(submission, filerecordname, None)
-                if not filerecord:
-                    logger.info(
-                        f'no {filerecordname} found for publisher_id '
-                        f'{submission.parent.publisher_id} '
-                        f'submission id {submission.id} '
-                        '--> {submission.publishedUrl}')
-                    self.report.add(
-                        (f'{context_name}: no {filerecordname} found for'),
-                        submission.publishedUrl)
-                    continue
-                if filerecord['state'] == STATE_PROCESSED:
-                    logger.info(
-                        f'{filerecordname} already processed '
-                        f'{submission.parent.publisher_id} '
-                        f'submission id {submission.id}')
-                    self.report.add(
-                        (f'{context_name}: {filerecordname} already processed'
-                         '(publisher_id, submission_id) '),
-                        (submission.parent.publisher_id, submission.id,))
-                    continue
-                if filerecord['state'] == STATE_SKIP:
-                    self.report.add(
-                        (f'[{context_name}] remote_url set for'
-                         '(publisher_id, submission_id) '),
-                        (submission.parent.publisher_id, submission.id,))
-                    continue
-                submission_file_id = filerecord['submissionFileId']
-                publication_id = filerecord['publicationId']
-                item_folder = Path(self.export_path)\
-                    .joinpath(context_name, f'publication_id_{publication_id}',
-                              f'submission_file_id_{submission_file_id}')
+                # is_ojs = self.system == 'ojs'
+                # filerecordname = 'galley' if is_ojs else 'publicationFormat'
+                filerecords = getattr(submission, 'files', None)
+                for filerecord in filerecords:
+                    if not filerecord:
+                        logger.info(
+                            'no files found for publisher_id '
+                            f'{submission.parent.publisher_id} '
+                            f'submission id {submission.id} '
+                            '--> {submission.publishedUrl}')
+                        self.report.add(
+                            (f'{context_name}: no files found for'),
+                            submission.publishedUrl)
+                        continue
+                    if filerecord['state'] == STATE_PROCESSED:
+                        logger.info(
+                            'files already processed '
+                            f'{submission.parent.publisher_id} '
+                            f'submission id {submission.id}')
+                        self.report.add(
+                            (f'{context_name}: files already processed'
+                                '(publisher_id, submission_id) '),
+                            (submission.parent.publisher_id, submission.id,))
+                        continue
+                    if filerecord['state'] == STATE_SKIP:
+                        self.report.add(
+                            (f'[{context_name}] remote_url set for'
+                                '(publisher_id, submission_id) '),
+                            (submission.parent.publisher_id, submission.id,))
+                        continue
+                    submission_file_id = filerecord['submissionFileId']
+                    publication_id = filerecord['publicationId']
+                    item_folder = Path(self.export_path)\
+                        .joinpath(
+                            context_name, f'publication_id_{publication_id}',
+                            f'submission_file_id_{submission_file_id}')
 
-                self.write_meta_file(item_folder, submission)
-                self.write_collections_file(item_folder, self.collection)
+                    self.write_meta_file(item_folder, submission)
+                    self.write_collections_file(item_folder, self.collection)
 
-                if self.system == 'ojs':
-                    filenames = self.download_galley(
-                        context, item_folder, submission)
-                else:
-                    filenames = self.download_publicationFormat(
-                        context, item_folder, submission)
+                    if self.system == 'ojs':
+                        filenames = self.download_galley(
+                            context, item_folder, submission)
+                    else:
+                        filenames = self.download_publicationFormat(
+                            context, item_folder, submission)
 
-                self.write_contents_file(item_folder, filenames)
+                    self.write_contents_file(item_folder, filenames)
 
     def write_zips(self) -> None:
         export_pth = Path(self.export_path)

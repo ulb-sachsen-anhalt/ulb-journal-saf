@@ -184,6 +184,7 @@ class DataPoll():
         return rest_call
 
     def get_submission_file_id(self, href, assocId):
+        """only for OMP"""
         filesdata = self._server_request(href + '/files')
         for fd in filesdata['items']:
             if fd['assocId'] == int(assocId):
@@ -275,10 +276,7 @@ class DataPoll():
                             self.report.add(
                                 'already processed submissions', submission_id)
                             record['state'] = STATE_PROCESSED
-                        if omp:
-                            subm_data['publicationFormat'] = record
-                        else:
-                            subm_data['galley'] = record
+                        subm_data.setdefault('files', []).append(record)
 
                 subm.update(subm_data)
                 subm_ob = Submission(subm, publisher)
