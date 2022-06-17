@@ -248,11 +248,10 @@ class ExportSAF:
         return "".join(c for c in filename if c not in pct)
 
     def export(self) -> None:
+        """download files write SAF format"""
         for context in self.contexts:
             context_name = context.url_path
             for num, submission in enumerate(context.submissions):
-                # is_ojs = self.system == 'ojs'
-                # filerecordname = 'galley' if is_ojs else 'publicationFormat'
                 filerecords = getattr(submission, 'files', [])
                 publication_id = None
                 for filerecord in filerecords:
@@ -282,7 +281,7 @@ class ExportSAF:
                                 '(publisher_id, submission_id) '),
                             (submission.parent.publisher_id, submission.id,))
                         continue
-                    # yes, there is a publication, proceed
+                    # yes, there is a publication --> proceed
                     publication_id = filerecord['publicationId']
 
                 if publication_id is not None:
