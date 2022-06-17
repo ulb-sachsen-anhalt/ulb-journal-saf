@@ -23,6 +23,7 @@ class TransferSAF:
         self.report = {}
 
     def load_config(self, configparser) -> None:
+        """extract data from configuration"""
         s = configparser['scp']
         d = configparser['docker']
         ds = configparser['dspace']
@@ -43,6 +44,7 @@ class TransferSAF:
         self.extra = ds['extra']
 
     def get_client(self) -> SSHClient:
+        """get or recycle ssh client"""
         try:
             transport = self.client.get_transport()
             transport.send_ignore()
@@ -66,6 +68,7 @@ class TransferSAF:
         return client
 
     def get_files(self) -> list:
+        """return list of exported zip files"""
         export_path = Path(self.export_path)
         zip_files = []
         if export_path.exists():
@@ -75,6 +78,7 @@ class TransferSAF:
         return zip_files
 
     def transferobserver(self, transferred, total):
+        """gimmick to visualize download"""
         if transferred == total:
             print(f'  transfer done (total: {total >> 20} Mb)')
         self.observer_count += 1
@@ -82,13 +86,13 @@ class TransferSAF:
             print('.', end="")
 
     def transfer_files(self, files) -> None:
+        """copy files to target server"""
         if len(files) == 0:
             logger.info('no files found to transfer')
             return
         client = self.get_client()
         with client.open_sftp() as ftp_client:
             self.observer_count = 0
-
             for file_ in files:
                 logger.info(f'transfer file {file_}')
                 logger.info(f"target: '{self.server_source}/{file_.name}")
@@ -99,6 +103,7 @@ class TransferSAF:
         logger.info('transfer done...')
 
     def run_command(self, command) -> list:
+        """execute command on remote server"""
         client = self.get_client()
         logger.info(f"\n{'-' * 100}\n{command}\n{'-' * 100}")
         lines = []
