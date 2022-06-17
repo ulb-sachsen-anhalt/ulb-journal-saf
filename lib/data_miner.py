@@ -67,6 +67,7 @@ class DataPoll():
         self.report = report
 
     def load_config(self, configparser) -> None:
+        """extract data from configuration"""
         g = configparser['general']
         self.endpoint_contexts = g['endpoint_contexts']
         self.endpoint_submissions = g['endpoint_submissions']
@@ -77,6 +78,8 @@ class DataPoll():
         self.export_path = e['export_path']
 
     def determine_done(self):
+        """check and register all former processed items
+           to avoid repeated downloads """
         self.processed = {}
         try:
             paths = Path(self.export_path).iterdir()
@@ -92,6 +95,7 @@ class DataPoll():
             self.processed[submission_file_id] = publication_id
 
     def _server_request(self, query) -> dict:
+        """do the http request"""
         mark = '&' if '?' in query else '?'
         query += f'{mark}{self.token}'
         # no need to verify, 'cause we trust the server
@@ -119,6 +123,7 @@ class DataPoll():
         return rest_call
 
     def request_publishers(self) -> None:
+        """batched reqquest for publishers"""
         allitems = 1
         offset = 0
         items = []
@@ -150,12 +155,14 @@ class DataPoll():
             f'got all published items ({len(self.items)}), done...')
 
     def serialise_data(self) -> None:
+        """ store all received data as Publisher object"""
         logger.info(f"process {len(self.items)} publishers")
         for data in self.items:
             publisher = Publisher(data)
             self.publishers.append(publisher)
 
     def request_contexts(self) -> None:
+        """loop publishers, request data form server"""
         for publisher in self.publishers:
             publisher_url = publisher._href
             context_dict = self._server_request(publisher_url)
@@ -191,6 +198,7 @@ class DataPoll():
                 return fd['id']
 
     def request_submissions(self) -> None:
+        """query all informations via OJS/OMP REST api"""
         for publisher in self.publishers:
             url_path = publisher.url_path
             logger.debug('#' * 100)
