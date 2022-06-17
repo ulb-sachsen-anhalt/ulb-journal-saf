@@ -23,6 +23,7 @@ class ExportSAF:
         self.report = report
 
     def load_config(self, configparser) -> None:
+        """load settings from configuration file"""
         e = configparser['export']
         g = configparser['general']
         self.meta = configparser['meta']
@@ -37,8 +38,9 @@ class ExportSAF:
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
+        """write dublin_core.xml or metadata_<schema>.xml file"""
         name = 'dublin_core.xml' if schema == 'dc'\
-                else f'metadata_{schema}.xml'
+               else f'metadata_{schema}.xml'
         work_dir.mkdir(parents=True, exist_ok=True)
         pth = work_dir / name
         logger.debug(f"write {name}")
@@ -54,6 +56,7 @@ class ExportSAF:
 
     @staticmethod
     def locale2isolang(local_code) -> str:
+        """transform locale to isolang e.g. 'de_DE'-->'ger' """
         locale = local_code[0:2]
         lang = pycountry.languages.get(alpha_2=locale)
         isolang = lang.bibliographic if hasattr(lang, 'bibliographic')\
@@ -62,6 +65,7 @@ class ExportSAF:
 
     @staticmethod
     def write_contents_file(work_dir, file_list) -> None:
+        """write contents file"""
         filename = 'contents'
         pth = work_dir / filename
         with open(pth, 'w') as fh:
@@ -69,6 +73,7 @@ class ExportSAF:
 
     @staticmethod
     def write_collections_file(work_dir, collection) -> None:
+        """write collections file"""
         filename = 'collections'
         Path(work_dir).mkdir(parents=True, exist_ok=True)
         pth = work_dir / filename
@@ -76,6 +81,7 @@ class ExportSAF:
             fh.write(collection)
 
     def write_meta_file(self, item_folder, submission) -> None:
+        """write metadata_<schema>.xml"""
         locale = submission.locale
         schema_dict = {}
         # eval-call will use following variables
@@ -137,6 +143,7 @@ class ExportSAF:
             self.write_xml_file(item_folder, dcl, schema)
 
     def download_galley(self, context, work_dir, submission) -> list:
+        """download files form OJS server"""
         publication = submission.publication
         context_url = context.url
         galleys = publication['galleys']
@@ -188,6 +195,7 @@ class ExportSAF:
 
     def download_publicationFormat(
             self, context, work_dir, submission) -> list:
+        """download files form OMP server"""
         publication = submission.publication
         context_url = context.url
         pubformats = publication['publicationFormats']
@@ -234,6 +242,8 @@ class ExportSAF:
 
     @staticmethod
     def clean_filename(filename):
+        """remove punctation chars from filename
+           to avoid side effects"""
         pct = string.punctuation.replace('.', '') + ' '
         return "".join(c for c in filename if c not in pct)
 
@@ -243,7 +253,8 @@ class ExportSAF:
             for num, submission in enumerate(context.submissions):
                 # is_ojs = self.system == 'ojs'
                 # filerecordname = 'galley' if is_ojs else 'publicationFormat'
-                filerecords = getattr(submission, 'files', None)
+                filerecords = getattr(submission, 'files', [])
+                publication_id = None
                 for filerecord in filerecords:
                     if not filerecord:
                         logger.info(
@@ -271,12 +282,15 @@ class ExportSAF:
                                 '(publisher_id, submission_id) '),
                             (submission.parent.publisher_id, submission.id,))
                         continue
-                    submission_file_id = filerecord['submissionFileId']
+                    # yes, there is a publication, proceed
                     publication_id = filerecord['publicationId']
+
+                if publication_id is not None:
                     item_folder = Path(self.export_path)\
                         .joinpath(
-                            context_name, f'publication_id_{publication_id}',
-                            f'submission_file_id_{submission_file_id}')
+                            context_name,
+                            f'publication_id_{publication_id}',
+                            f'files_{len(filerecords)}')
 
                     self.write_meta_file(item_folder, submission)
                     self.write_collections_file(item_folder, self.collection)
@@ -291,6 +305,7 @@ class ExportSAF:
                     self.write_contents_file(item_folder, filenames)
 
     def write_zips(self) -> None:
+        """write final zip file aka 'SAF' """
         export_pth = Path(self.export_path)
         if not export_pth.is_dir():
             logger.info(f"export path not found ->'{export_pth}', stop export")
@@ -301,8 +316,8 @@ class ExportSAF:
             items = [i for i in context.iterdir() if i.is_dir()]
             for item in items:
                 logger.debug(f'zip folder at {item}')
-                submission_file_id = list(item.iterdir())[0].name
-                name = f'{context.name}_{item.name}_{submission_file_id}'
+                submission_folder = list(item.iterdir())[0].name
+                name = f'{context.name}_{item.name}_{submission_folder}'
                 already_done = Path(export_pth / (name + '.zip.done'))
                 if already_done.is_file():
                     logger.debug(
