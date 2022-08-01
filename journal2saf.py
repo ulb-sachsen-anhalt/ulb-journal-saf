@@ -144,6 +144,23 @@ class TaskDispatcher:
         else:
             logger.info('no email found in config, skip')
 
+    def send_report2(self):
+        from lib.send_mail import send_report
+        receivers = None
+        if CP.has_section('email'):
+            receivers = CP.get('email', 'receivers')
+            sender = CP.get('email', 'sender')
+            loginemail = CP.get('email', 'smtp_username')
+            loginpw = CP.get('email', 'smtp_password')
+        if receivers:
+            for receiver in receivers.split():
+                logger.info('try send report to %s', receiver)
+                try:
+                    send_report(sender, loginemail, loginpw, receiver, False, self.report.report)
+                except (SMTPException, ConnectionRefusedError) as exc:
+                    logger.error('could not send report %s', exc)
+        else:
+            logger.info('no email found in config, skip')
 
 def main() -> None:
     dispatcher = TaskDispatcher()
