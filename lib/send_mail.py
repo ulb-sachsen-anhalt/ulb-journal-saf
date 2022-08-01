@@ -51,6 +51,3 @@ def send_report(sender, login, passwd, receiver, error, log):
         mailserver.quit()
     except Error as e:
         print(e)
-
-
-#send_report("ojs@bibliothek.uni-halle.de", Mailfünfsteller aus conf, Mailpasswort aus conf, "christian.peters@bibliothek.uni-halle.de", False, "Beispiellog zum Testen")

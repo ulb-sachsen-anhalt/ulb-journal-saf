@@ -20,6 +20,8 @@
     # configure here your mail information data
     sender = test@example.com
     receivers = r1@example.com  r3@example.com
+    smtp_username = abcde
+    smtp_password = passwort_von_abcde
 
 [export]
     # store zip (SAFs) files here

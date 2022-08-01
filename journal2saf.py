@@ -18,6 +18,7 @@ from lib.copy_saf import CopySAF
 from lib.retrieve_doi import RetrieveDOI
 from lib.write_remote_url import WriteRemoteUrl
 from lib.data_miner import DataPoll
+from lib.send_mail import send_report
 
 warnings.filterwarnings(
     'ignore', message='Unverified HTTPS request')
@@ -132,31 +133,13 @@ class TaskDispatcher:
         if CP.has_section('email'):
             receivers = CP.get('email', 'receivers')
             sender = CP.get('email', 'sender')
+            smtp_user = CP.get('email', 'smtp_username')
+            smtp_pass = CP.get('email', 'smtp_password')
         if receivers:
             for receiver in receivers.split():
                 logger.info('try send report to %s', receiver)
                 try:
-                    smtpObj = smtplib.SMTP('localhost')
-                    smtpObj.sendmail(
-                        sender, receiver, self.report.report)
-                except (SMTPException, ConnectionRefusedError) as exc:
-                    logger.error('could not send report %s', exc)
-        else:
-            logger.info('no email found in config, skip')
-
-    def send_report2(self):
-        from lib.send_mail import send_report
-        receivers = None
-        if CP.has_section('email'):
-            receivers = CP.get('email', 'receivers')
-            sender = CP.get('email', 'sender')
-            loginemail = CP.get('email', 'smtp_username')
-            loginpw = CP.get('email', 'smtp_password')
-        if receivers:
-            for receiver in receivers.split():
-                logger.info('try send report to %s', receiver)
-                try:
-                    send_report(sender, loginemail, loginpw, receiver, False, self.report.report)
+                    send_report(sender, smtp_user, smtp_pass, receiver, False, str(self.report.report))
                 except (SMTPException, ConnectionRefusedError) as exc:
                     logger.error('could not send report %s', exc)
         else:
