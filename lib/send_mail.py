@@ -1,7 +1,7 @@
 def create_local_smtp_server(Login, Password):
     # Creating local SMTP Server with TLS authentification
     import smtplib
-    mailserver = smtplib.SMTP("smtpauth.uni-halle.de", 587)
+    mailserver = smtplib.SMTP("mail.uni-halle.de", 587)
     mailserver.ehlo()
     mailserver.starttls()
     mailserver.ehlo()
@@ -14,9 +14,9 @@ def send_report(sender, login, passwd, receiver, error, log):
     # login: Login for smtpauth.uni-halle.de (usually "abcde")
     # passwd: Password for login
     # receiver: Receiver email
-    # error: If a error appeared, set to True, else False
+    # error: If an error appeared, set to True, else False
     # log: The actual report
-    
+
     Sender = sender
     Login = login
     Password = passwd
@@ -51,3 +51,6 @@ def send_report(sender, login, passwd, receiver, error, log):
         mailserver.quit()
     except Error as e:
         print(e)
+
+
+#send_report("ojs@bibliothek.uni-halle.de", Mailfünfsteller aus conf, Mailpasswort aus conf, "christian.peters@bibliothek.uni-halle.de", False, "Beispiellog zum Testen")
