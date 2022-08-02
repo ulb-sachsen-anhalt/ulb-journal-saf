@@ -7,7 +7,6 @@ import logging.config
 import argparse
 import warnings
 import pathlib
-import smtplib
 from smtplib import SMTPException
 from datetime import datetime
 from pathlib import Path
@@ -47,6 +46,9 @@ class Report:
 
     def add(self, key, value):
         self.report.setdefault(key, []).append(value)
+
+    def __get__(self):
+        return str(self.report)
 
     def print(self):
         print('################### report ###################')
@@ -133,22 +135,24 @@ class TaskDispatcher:
         if CP.has_section('email'):
             receivers = CP.get('email', 'receivers')
             sender = CP.get('email', 'sender')
-            smtp_user = CP.get('email', 'smtp_username')
-            smtp_pass = CP.get('email', 'smtp_password')
-            smtp_server = CP.get('email', 'smtp_server')
-            smtp_port = CP.get('email', 'smtp_port')
+            user_ = CP.get('email', 'smtp_username')
+            pass_ = CP.get('email', 'smtp_password')
+            server_ = CP.get('email', 'smtp_server')
+            port_ = CP.get('email', 'smtp_port')
         if receivers:
             for receiver in receivers.split():
                 logger.info('try send report to %s', receiver)
                 try: 
-                    send_report(sender, smtp_user, smtp_pass
-                                , smtp_server, smtp_port, receiver
+                    msg = self.report
+                    send_report(sender, user_, pass_
+                                , server_, port_, receiver
                                 , False  # if no error: False, else True
-                                , str(self.report.report))
+                                , msg)
                 except (SMTPException, ConnectionRefusedError) as exc:
                     logger.error('could not send report %s', exc)
         else:
-            logger.info('no email found in config, skip')
+            logger.info('no section email found in config, skip')
+
 
 def main() -> None:
     dispatcher = TaskDispatcher()
