@@ -50,6 +50,10 @@ class Report:
     def __get__(self):
         return str(self.report)
 
+    def has_error(self) -> bool():
+        "check if error occurs"
+        return 'ERROR' in self.report.keys()
+
     def print(self):
         print('################### report ###################')
         for k, v in self.report.items():
@@ -143,10 +147,10 @@ class TaskDispatcher:
             for receiver in receivers.split():
                 logger.info('try send report to %s', receiver)
                 try: 
-                    msg = self.report
+                    msg = self.report.report
                     send_report(sender, user_, pass_
                                 , server_, port_, receiver
-                                , False  # if no error: False, else True
+                                , self.report.has_error()
                                 , msg)
                 except (SMTPException, ConnectionRefusedError) as exc:
                     logger.error('could not send report %s', exc)

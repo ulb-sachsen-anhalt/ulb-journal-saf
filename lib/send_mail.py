@@ -17,7 +17,7 @@ def create_smtp_session(login, password, server, port):
     return session
 
 
-def send_report(sender, login, passwd, server, port, receiver, error, log):
+def send_report(sender, login, passwd, server, port, receiver, error, report):
     # sender: Sender email
     # login: Login for mailserver
     # passwd: Password for login
@@ -25,7 +25,7 @@ def send_report(sender, login, passwd, server, port, receiver, error, log):
     # error: If an error appeared, set to True, else False
     # log: The actual report
 
-    Content = log  # "Content" will be the body of the mail
+    Content = str(report)  # "Content" will be the body of the mail
 
     # Subject contains warning if error in log
     if error:
