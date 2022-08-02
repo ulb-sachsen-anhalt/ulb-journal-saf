@@ -43,6 +43,6 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     try:
         with create_smtp_session(login, passwd, server, port) as session:
             session.sendmail(sender, receiver, Full_Email)
-    except smtplib.SMTPException as e:
+    except (smtplib.SMTPException, ConnectionRefusedError) as exc:
         logger = logging.getLogger('journals-logging-handler')
-        logger.error('Error in smtp session: %s', e)
+        logger.error('could not send report %s', exc)
