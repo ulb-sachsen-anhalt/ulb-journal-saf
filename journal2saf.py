@@ -7,7 +7,7 @@ import logging.config
 import argparse
 import warnings
 import pathlib
-from smtplib import SMTPException
+
 from datetime import datetime
 from pathlib import Path
 from configparser import ConfigParser
@@ -141,15 +141,18 @@ class TaskDispatcher:
             sender = CP.get('email', 'sender')
             user_ = CP.get('email', 'smtp_username')
             pass_ = CP.get('email', 'smtp_password')
-        if receivers:
-            for receiver in receivers.split():
-                logger.info('try send report to %s', receiver)
-                try:
-                    msg = self.report
-                    send_report(
-                        sender, user_, pass_, receiver, False, msg)
-                except (SMTPException, ConnectionRefusedError) as exc:
-                    logger.error('could not send report %s', exc)
+            server_ = CP.get('email', 'smtp_server')
+            port_ = CP.get('email', 'smtp_port')
+            if receivers:
+                for receiver in receivers.split():
+                    logger.info('try send report to %s', receiver)
+                    msg = self.report.report
+                    send_report(sender, user_, pass_
+                                , server_, port_, receiver
+                                , self.report.has_error()
+                                , msg)
+            else:
+                logger.info('no receiver in section email found in config, skip')
         else:
             logger.info('no section email found in config, skip')
 
