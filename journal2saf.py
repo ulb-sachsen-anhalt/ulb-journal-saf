@@ -7,7 +7,7 @@ import logging.config
 import argparse
 import warnings
 import pathlib
-from smtplib import SMTPException
+
 from datetime import datetime
 from pathlib import Path
 from configparser import ConfigParser
