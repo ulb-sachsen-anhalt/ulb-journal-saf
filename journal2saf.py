@@ -135,11 +135,16 @@ class TaskDispatcher:
             sender = CP.get('email', 'sender')
             smtp_user = CP.get('email', 'smtp_username')
             smtp_pass = CP.get('email', 'smtp_password')
+            smtp_server = CP.get('email', 'smtp_server')
+            smtp_port = CP.get('email', 'smtp_port')
         if receivers:
             for receiver in receivers.split():
                 logger.info('try send report to %s', receiver)
-                try:
-                    send_report(sender, smtp_user, smtp_pass, receiver, False, str(self.report.report))
+                try: 
+                    send_report(sender, smtp_user, smtp_pass
+                                , smtp_server, smtp_port, receiver
+                                , False  # if no error: False, else True
+                                , str(self.report.report))
                 except (SMTPException, ConnectionRefusedError) as exc:
                     logger.error('could not send report %s', exc)
         else:

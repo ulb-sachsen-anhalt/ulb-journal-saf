@@ -1,53 +1,48 @@
-def create_local_smtp_server(Login, Password):
-    # Creating local SMTP Server with TLS authentification
-    import smtplib
-    mailserver = smtplib.SMTP("mail.uni-halle.de", 587)
-    mailserver.ehlo()
-    mailserver.starttls()
-    mailserver.ehlo()
-    mailserver.login(Login, Password) # Fünfsteller + Pass
-    return mailserver
+#!/usr/bin/env python3
+import smtplib
+
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+import logging
 
 
-def send_report(sender, login, passwd, receiver, error, log):
+def create_smtp_session(login, password, server, port):
+    # Creating SMTP session with TLS authentification
+    session = smtplib.SMTP(server, port)
+    session.ehlo()
+    session.starttls()
+    session.ehlo()
+    session.login(login, password)
+    return session
+
+
+def send_report(sender, login, passwd, server, port, receiver, error, log):
     # sender: Sender email
-    # login: Login for smtpauth.uni-halle.de (usually "abcde")
+    # login: Login for mailserver
     # passwd: Password for login
     # receiver: Receiver email
     # error: If an error appeared, set to True, else False
     # log: The actual report
 
-    Sender = sender
-    Login = login
-    Password = passwd
-    Receiver = receiver
-    Error = error
-    Inhalt = log  # Mailbody is the log
+    Content = log  # "Content" will be the body of the mail
 
-    
     # Subject contains warning if error in log
-    if Error:
+    if error:
         Subject = "[ERROR]"
     else:
         Subject = "[Success]"
 
-    from email import encoders
-    from email.mime.base import MIMEBase
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    import datetime
-    now = datetime.datetime.now()
-
     message = MIMEMultipart()
-    message["From"] = Sender
-    message["To"] = Receiver
-    message["Subject"] = Subject + " OJS-DSpace-Migration: Report - " + str(now)
-    message.attach(MIMEText(Inhalt, "plain"))
-    Nachricht = message.as_string()
+    message["From"] = sender
+    message["To"] = receiver
+    message["Subject"] = Subject + " OJS-DSpace-Migration: Report"
+    message.attach(MIMEText(Content, "plain"))
+    Full_Email = message.as_string()
 
     try:
-        mailserver = create_local_smtp_server(Login, Password)
-        mailserver.sendmail(Sender, Receiver, Nachricht)
-        mailserver.quit()
-    except Error as e:
-        print(e)
+        with create_smtp_session(login, passwd, server, port) as session:
+            session.sendmail(sender, receiver, Full_Email)
+    except smtplib.SMTPException as e:
+        logger = logging.getLogger('journals-logging-handler')
+        logger.error('Error in smtp session: %s', e)
