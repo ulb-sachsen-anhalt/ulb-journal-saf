@@ -24,8 +24,12 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     # receiver: Receiver email
     # error: If an error appeared, set to True, else False
     # log: The actual report
-
-    Content = str(report)  # "Content" will be the body of the mail
+    Content = ""  # "Content" will be the body of the mail
+    for key in report.keys():
+        Content = Content + key + "\n"
+        for item in report[key]:
+            Content = Content + str(item) + "\n"
+        Content = Content + "--------------------------------\n"
 
     # Subject contains warning if error in log
     if error:
