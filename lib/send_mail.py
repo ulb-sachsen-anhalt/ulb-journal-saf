@@ -36,7 +36,7 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
         if "remote_url already set for" in key:
             with open(key, mode="w", encoding="utf-8") as file:
                 for item in report[key]:
-                    file.write(item)
+                    file.write(str(item))
                     file.write("\n")
             ListOfAttachements.append(key)
             Content = Content + "See attached file." + "\n"
