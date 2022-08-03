@@ -35,13 +35,19 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     for key in report.keys():
         Content = Content + key + ":\n"
         if "remote_url already set for" in key:
-            Filename = key + ".txt"
+            Filename = ""
+            for char in key:
+                if char.isalpha() or char.isdigit():
+                    Filename = Filename + char
+            Filename = Filename + ".txt"
             with open(Filename, mode="a", encoding="utf-8") as file:
+                file.write(key)
+                file.write("\n")
                 for item in report[key]:
                     file.write(str(item))
                     file.write("\n")
             ListOfAttachements.append(Filename)
-            Content = Content + "See attached file." + "\n"
+            Content = Content + "See attached file: " + Filename + "\n"
         else:
             for item in report[key]:
                 Content = Content + str(item) + "\n"
