@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import smtplib
 
+import zipfile
+import os
+
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -25,10 +30,19 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     # error: If an error appeared, set to True, else False
     # log: The actual report
     Content = ""  # "Content" will be the body of the mail
+    ListOfAttachements = []
     for key in report.keys():
-        Content = Content + key + "\n"
-        for item in report[key]:
-            Content = Content + str(item) + "\n"
+        Content = Content + key + ":\n"
+        if "remote_url already set for" in key:
+            with open(key, mode="w", encoding="utf-8") as file:
+                for item in report[key]:
+                    file.write(item)
+                    file.write("\n")
+            ListOfAttachements.append(key)
+            Content = Content + "See attached file." + "\n"
+        else:
+            for item in report[key]:
+                Content = Content + str(item) + "\n"
         Content = Content + "--------------------------------\n"
 
     # Subject contains warning if error in log
@@ -37,11 +51,25 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     else:
         Subject = "[Success]"
 
+    # Create zip for attachements
+    ZipFileName = "Logs.zip"
+    with zipfile.ZipFile(ZipFileName, mode="w") as zipF:
+        for file in ListOfAttachements:
+            zipF.write(file, compress_type=zipfile.ZIP_DEFLATED)
+
+    # Attach zipfile
+    with open(ZipFileName, "rb") as attach:
+        Attachement = MIMEBase("application", "octet-stream")
+        Attachement.set_payload(attach.read())
+    encoders.encode_base64(Attachement)
+    Attachement.add_header("Content-Disposition",
+                           "attachment; filename=" + ZipFileName,)
     message = MIMEMultipart()
     message["From"] = sender
     message["To"] = receiver
     message["Subject"] = Subject + " OJS-DSpace-Migration: Report"
     message.attach(MIMEText(Content, "plain"))
+    message.attach(Attachement)
     Full_Email = message.as_string()
 
     try:
@@ -50,3 +78,8 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     except (smtplib.SMTPException, ConnectionRefusedError) as exc:
         logger = logging.getLogger('journals-logging-handler')
         logger.error('could not send report %s', exc)
+
+    # Cleanup Step
+    for file in ListOfAttachements:
+        os.remove(file)
+    os.remove(ZipFileName)
