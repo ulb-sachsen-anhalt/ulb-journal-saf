@@ -3,6 +3,7 @@ import smtplib
 
 import zipfile
 import os
+import datetime
 
 from email import encoders
 from email.mime.base import MIMEBase
@@ -34,11 +35,12 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     for key in report.keys():
         Content = Content + key + ":\n"
         if "remote_url already set for" in key:
-            with open(key, mode="w", encoding="utf-8") as file:
+            Filename = key + ".txt"
+            with open(Filename, mode="a", encoding="utf-8") as file:
                 for item in report[key]:
                     file.write(str(item))
                     file.write("\n")
-            ListOfAttachements.append(key)
+            ListOfAttachements.append(Filename)
             Content = Content + "See attached file." + "\n"
         else:
             for item in report[key]:
@@ -52,10 +54,10 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
         Subject = "[Success]"
 
     # Create zip for attachements
-    ZipFileName = "Logs.zip"
+    ZipFileName = "Logs_" + datetime.date.today().strftime("%Y-%m-%d") + ".zip"
     with zipfile.ZipFile(ZipFileName, mode="w") as zipF:
         for file in ListOfAttachements:
-            zipF.write(file, compress_type=zipfile.ZIP_DEFLATED)
+            zipF.write(file)
 
     # Attach zipfile
     with open(ZipFileName, "rb") as attach:
