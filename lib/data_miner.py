@@ -80,19 +80,20 @@ class DataPoll():
     def determine_done(self):
         """check and register all former processed items
            to avoid repeated downloads """
-        self.processed = {}
+        # self.processed = {}   
+        self.processed = []
         try:
             paths = Path(self.export_path).iterdir()
             export_done = [f for f in paths if f.is_file()]
         except FileNotFoundError as err:
             logger.error(f'export path failure {err}')
-            self.report.add('ERROR', err)
             sys.exit(1)
         for file_ in export_done:
             parts = re.split('[_.]', file_.name)
             publication_id = parts[3]
-            submission_file_id = parts[7]
-            self.processed[submission_file_id] = publication_id
+            # submission_file_id = parts[7]
+            # self.processed[submission_file_id] = publication_id
+            self.processed.append(int(publication_id))
 
     def _server_request(self, query) -> dict:
         """do the http request"""
@@ -276,9 +277,7 @@ class DataPoll():
                         else:
                             file_id = str(record['submissionFileId'])
 
-                        publ_id = str(record['publicationId'])
-
-                        if publ_id == self.processed.get(file_id):
+                        if publication_id in self.processed:
                             logger.info(
                                 f'file exists in export {publ_href}, skip')
                             self.report.add(
