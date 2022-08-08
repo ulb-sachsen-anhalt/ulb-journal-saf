@@ -289,7 +289,7 @@ class ExportSAF:
                         .joinpath(
                             context_name,
                             f'publication_id_{publication_id}',
-                            f'files_{len(filerecords)}')
+                            f'submission_files_count_{len(filerecords)}')
 
                     self.write_meta_file(item_folder, submission)
                     self.write_collections_file(item_folder, self.collection)
