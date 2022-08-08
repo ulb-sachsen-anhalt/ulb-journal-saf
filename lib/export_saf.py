@@ -108,8 +108,16 @@ class ExportSAF:
             else:
                 value = eval(v)
                 if value == '':
+                    LoggerPID = str(submission._data['currentPublicationId'])
+                    LoggerSID = str(submission._data['submissionId'])
                     logger.warning("no value for %s", k)
-                    self.report.add("WARNING: no value for meta", k)
+                    self.report.add("WARNING: no value for meta",
+                                    "Publisher: " + context.url_path
+                                    + " - PubID: " + LoggerPID
+                                    + " - SubID: " + LoggerSID
+                                    + " - Missing: " + k
+                                    )
+
                 if isinstance(value, dict):
                     if locale in value:
                         value = value[locale]
