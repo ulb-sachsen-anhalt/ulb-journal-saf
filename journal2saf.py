@@ -50,12 +50,12 @@ class Report:
     def __get__(self):
         return str(self.report)
 
-    def has_error(self) -> bool() :
+    def has_error(self) -> bool():
         "check if error occurs"
-        for key in self.report.keys()
+        for key in self.report.keys():
             if 'error' in key.lower():
                 return True
-        reurn False
+        return False
 
     def print(self):
         print('################### report ###################')
