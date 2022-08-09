@@ -80,7 +80,6 @@ class DataPoll():
     def determine_done(self):
         """check and register all former processed items
            to avoid repeated downloads """
-        # self.processed = {}   
         self.processed = []
         try:
             paths = Path(self.export_path).iterdir()
@@ -91,8 +90,6 @@ class DataPoll():
         for file_ in export_done:
             parts = re.split('[_.]', file_.name)
             publication_id = parts[3]
-            # submission_file_id = parts[7]
-            # self.processed[submission_file_id] = publication_id
             self.processed.append(int(publication_id))
 
     def _server_request(self, query) -> dict:
