@@ -29,16 +29,18 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     # passwd: Password for login
     # receiver: Receiver email
     # error: If an error appeared, set to True, else False
-    # log: The actual report
+    # report: The actual report
     Content = ""  # "Content" will be the body of the mail
     ListOfAttachements = []
     for key in report.keys():
         Content = Content + key + ":\n"
-        if "remote_url already set for" in key:
+        if len(report[key]) > 20:
             Filename = ""
             for char in key:
                 if char.isalpha() or char.isdigit():
                     Filename = Filename + char
+                else:
+                    Filename = Filename + "_"
             Filename = Filename + ".txt"
             with open(Filename, mode="a", encoding="utf-8") as file:
                 file.write(key)
@@ -47,37 +49,41 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
                     file.write(str(item))
                     file.write("\n")
             ListOfAttachements.append(Filename)
-            Content = Content + "See attached file: " + Filename + "\n"
+            Content = Content + "More than 20 entries!" + "\n"
+            Content = Content + "Full list in file: " + Filename + "\n"
         else:
             for item in report[key]:
                 Content = Content + str(item) + "\n"
         Content = Content + "--------------------------------\n"
-
+    message = MIMEMultipart()
     # Subject contains warning if error in log
     if error:
         Subject = "[ERROR]"
     else:
         Subject = "[Success]"
 
-    # Create zip for attachements
-    ZipFileName = "Logs_" + datetime.date.today().strftime("%Y-%m-%d") + ".zip"
-    with zipfile.ZipFile(ZipFileName, mode="w") as zipF:
-        for file in ListOfAttachements:
-            zipF.write(file)
+    # Create zip for attachements, if attachements exist
+    if ListOfAttachements:
+        Current_Date = datetime.date.today().strftime("%Y-%m-%d")
+        ZipFileName = "Logs_" + Current_Date + ".zip"
+        with zipfile.ZipFile(ZipFileName, mode="w") as zipF:
+            for file in ListOfAttachements:
+                zipF.write(file)
 
-    # Attach zipfile
-    with open(ZipFileName, "rb") as attach:
-        Attachement = MIMEBase("application", "octet-stream")
-        Attachement.set_payload(attach.read())
-    encoders.encode_base64(Attachement)
-    Attachement.add_header("Content-Disposition",
-                           "attachment; filename=" + ZipFileName,)
-    message = MIMEMultipart()
+        # Attach zipfile
+        with open(ZipFileName, "rb") as attach:
+            Attachement = MIMEBase("application", "octet-stream")
+            Attachement.set_payload(attach.read())
+        encoders.encode_base64(Attachement)
+        Attachement.add_header("Content-Disposition",
+                               "attachment; filename=" + ZipFileName,)
+        message.attach(Attachement)
+
     message["From"] = sender
     message["To"] = receiver
     message["Subject"] = Subject + " OJS-DSpace-Migration: Report"
     message.attach(MIMEText(Content, "plain"))
-    message.attach(Attachement)
+
     Full_Email = message.as_string()
 
     try:
@@ -88,6 +94,7 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
         logger.error('could not send report %s', exc)
 
     # Cleanup Step
-    for file in ListOfAttachements:
-        os.remove(file)
-    os.remove(ZipFileName)
+    if ListOfAttachements:
+        for file in ListOfAttachements:
+            os.remove(file)
+        os.remove(ZipFileName)
