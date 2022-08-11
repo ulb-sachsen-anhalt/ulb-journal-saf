@@ -6,12 +6,12 @@ import logging
 import shutil
 import mimetypes
 import pycountry
-from pathlib import Path
-from .data_miner import STATE_PROCESSED, STATE_SKIP
 import requests
+import inspect
+from pathlib import Path
 from bs4 import BeautifulSoup
-from . import filters # Need to see whole file to get all functions
-import inspect # to get all functions
+from .data_miner import STATE_PROCESSED, STATE_SKIP
+from . import filters  # Need to see whole file to get all functions
 
 logger = logging.getLogger('journals-logging-handler')
 
@@ -140,13 +140,13 @@ class ExportSAF:
                 if k == "dc.contributor.author":
                     if isinstance(value, list):
                         for auth in value:
-                            if locale in auth['givenName'].keys():
-                                if locale in auth['familyName'].keys():
-                                    first = auth['givenName'][locale]
-                                    family = auth['familyName'][locale]
-                                    value = f"{family}, {first}"
-                                    schema_dict.setdefault(
-                                        schema, []).append((value, *meta_tpl), )
+                            if locale in auth['givenName'].keys() and\
+                                    locale in auth['familyName'].keys():
+                                first = auth['givenName'][locale]
+                                family = auth['familyName'][locale]
+                                value = f"{family}, {first}"
+                                schema_dict.setdefault(
+                                    schema, []).append((value, *meta_tpl), )
                     continue
             if value:
                 schema_dict.setdefault(

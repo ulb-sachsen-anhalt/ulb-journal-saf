@@ -1,3 +1,5 @@
+import inspect
+
 # Add your custom filters here
 # All functions need to follow the scheme:
 
@@ -64,8 +66,6 @@ def filter_author(k, value):  # Filters authors with the name "admin" or "."
 
 # Do not edit below this line
 # ---------------------------
-import inspect
-
 
 def filter_metadata(k, value, filterfunctions):
     for (sfun, func) in filterfunctions:
