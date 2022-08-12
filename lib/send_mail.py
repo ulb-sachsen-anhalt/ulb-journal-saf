@@ -30,71 +30,71 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     # receiver: Receiver email
     # error: If an error appeared, set to True, else False
     # report: The actual report
-    Content = ""  # "Content" will be the body of the mail
-    ListOfAttachements = []
+    content = ""  # "content" will be the body of the mail
+    list_of_attachements = []
     for key in report.keys():
-        Content = Content + key + ":\n"
+        content = content + key + ":\n"
         if len(report[key]) > 20:
-            Filename = ""
+            filename = ""
             for char in key:
                 if char.isalpha() or char.isdigit():
-                    Filename = Filename + char
+                    filename = filename + char
                 else:
-                    Filename = Filename + "_"
-            Filename = Filename + ".txt"
-            with open(Filename, mode="a", encoding="utf-8") as file:
+                    filename = filename + "_"
+            filename = filename + ".txt"
+            with open(filename, mode="a", encoding="utf-8") as file:
                 file.write(key)
                 file.write("\n")
                 for item in report[key]:
                     file.write(str(item))
                     file.write("\n")
-            ListOfAttachements.append(Filename)
-            Content = Content + "More than 20 entries!" + "\n"
-            Content = Content + "Full list in file: " + Filename + "\n"
+            list_of_attachements.append(filename)
+            content = content + "More than 20 entries!" + "\n"
+            content = content + "Full list in file: " + filename + "\n"
         else:
             for item in report[key]:
-                Content = Content + str(item) + "\n"
-        Content = Content + "--------------------------------\n"
+                content = content + str(item) + "\n"
+        content = content + "--------------------------------\n"
     message = MIMEMultipart()
     # Subject contains warning if error in log
     if error:
-        Subject = "[ERROR]"
+        subject = "[ERROR]"
     else:
-        Subject = "[Success]"
+        subject = "[Success]"
 
     # Create zip for attachements, if attachements exist
-    if ListOfAttachements:
-        Current_Date = datetime.date.today().strftime("%Y-%m-%d")
-        ZipFileName = "Logs_" + Current_Date + ".zip"
-        with zipfile.ZipFile(ZipFileName, mode="w") as zipF:
-            for file in ListOfAttachements:
+    if list_of_attachements:
+        current_date = datetime.date.today().strftime("%Y-%m-%d")
+        zip_filename = "Logs_" + current_date + ".zip"
+        with zipfile.ZipFile(zip_filename, mode="w") as zipF:
+            for file in list_of_attachements:
                 zipF.write(file)
 
         # Attach zipfile
-        with open(ZipFileName, "rb") as attach:
-            Attachement = MIMEBase("application", "octet-stream")
-            Attachement.set_payload(attach.read())
+        with open(zip_filename, "rb") as attach:
+            attachement = MIMEBase("application", "octet-stream")
+            attachement.set_payload(attach.read())
         encoders.encode_base64(Attachement)
-        Attachement.add_header("Content-Disposition",
-                               "attachment; filename=" + ZipFileName,)
-        message.attach(Attachement)
+        attachement.add_header("Content-Disposition",
+                               "attachment; filename=" + zip_filename,)
+        message.attach(attachement)
 
     message["From"] = sender
     message["To"] = receiver
-    message["Subject"] = Subject + " OJS-DSpace-Migration: Report"
+    message["Subject"] = subject + " OJS-DSpace-Migration: Report"
     message.attach(MIMEText(Content, "plain"))
 
-    Full_Email = message.as_string()
+    full_email = message.as_string()
 
     try:
         with create_smtp_session(login, passwd, server, port) as session:
-            session.sendmail(sender, receiver, Full_Email)
+            session.sendmail(sender, receiver, full_email)
     except (smtplib.SMTPException, ConnectionRefusedError) as exc:
         logger = logging.getLogger('journals-logging-handler')
         logger.error('could not send report %s', exc)
 
     # Cleanup Step
-    if ListOfAttachements:
-        for file in ListOfAttachements:
+    if list_of_attachements:
+        for file in list_of_attachements:
             os.remove(file)
-        os.remove(ZipFileName)
+        os.remove(zip_filename)
