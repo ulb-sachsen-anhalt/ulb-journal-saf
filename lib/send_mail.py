@@ -74,7 +74,7 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
         with open(zip_filename, "rb") as attach:
             attachement = MIMEBase("application", "octet-stream")
             attachement.set_payload(attach.read())
-        encoders.encode_base64(Attachement)
+        encoders.encode_base64(attachement)
         attachement.add_header("Content-Disposition",
                                "attachment; filename=" + zip_filename,)
         message.attach(attachement)
