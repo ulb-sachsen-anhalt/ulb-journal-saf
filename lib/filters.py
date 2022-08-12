@@ -55,7 +55,7 @@ def filter_author(k, value):  # Filters authors with the name "admin" or "."
                     break
         for lang in list(value[0]['givenName'].keys()):
             cur_name = value[0]['givenName'][lang]
-            for bad_name in list_of_unwanted_names::
+            for bad_name in list_of_unwanted_names:
                 if bad_name == cur_name:
                     del new_value[0]['givenName'][lang]
                     break
