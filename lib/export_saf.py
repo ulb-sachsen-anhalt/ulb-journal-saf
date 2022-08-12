@@ -40,7 +40,7 @@ class ExportSAF:
         self.filters = inspect.getmembers(filters, inspect.isfunction)
 
     @staticmethod
-    def write_xml_file(work_dir, dblcore, schema) -> None:
+    def write_xml_file(work_dir, dblcore_original, schema) -> None:
         """write dublin_core.xml or metadata_<schema>.xml file"""
         name = 'dublin_core.xml' if schema == 'dc'\
                else f'metadata_{schema}.xml'
@@ -48,6 +48,18 @@ class ExportSAF:
         pth = work_dir / name
         logger.debug(f"write {name}")
         dcline = '  <dcvalue element="{1}" qualifier="{2}"{3}>{0}</dcvalue>'
+        dblcore = []
+        for tpl in dblcore_original:
+            if isinstance(tpl[0], str):
+                new_tuple = (tpl[0]
+                             .replace('& ', '&amp; ')
+                             .replace('<', '&lt;')
+                             .replace('>', '&gt;'), )
+                for i in range(len(tpl)-1):
+                    new_tuple = new_tuple + (tpl[i+1], )
+                dblcore.append(new_tuple)
+            else:
+                dblcore.append(tpl)
         dcvalues = [dcline.format(*tpl) for tpl in dblcore]
         schema = f' schema="{schema}"' if schema != 'dc' else ''
 
@@ -125,16 +137,6 @@ class ExportSAF:
                     if locale in value:
                         value = value[locale]
                         meta_tpl[-1] = f' language="{language}"'
-
-                if isinstance(value, str) and\
-                        (value.count('<') and value.count('>')):
-                    # parse html input
-                    soup = BeautifulSoup(value, features="html.parser")
-                    # value = soup.get_text()
-                    # value = value.replace('& ', '&amp; ')
-                    value = soup.get_text().replace('& ', '&amp; ')\
-                        .replace('<', '&lt;')\
-                        .replace('>', '&gt;')\
 
                 # special treatment for multiple entries
                 if k == "dc.contributor.author":
