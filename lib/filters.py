@@ -13,13 +13,13 @@ import inspect
 
 # All functions in this file will be called automatically
 
-# Example: Remove abstracts that are too short (<20 symbols):
+# Example: Remove abstracts that are too short (<25 symbols):
 
 # def filter_abstract(k, value):
 #     if k == "dc.description.abstract":
 #         new_value = {}
 #         for lang in value:
-#             if len(value[lang])>=20:
+#             if len(value[lang])>=25:
 #                 new_value[lang] = value[lang]
 #         value = new_value
 #     return value
@@ -37,7 +37,7 @@ def filter_abstract(k, value):  # Filters abstracts that are too short
     if k == "dc.description.abstract":
         new_value = {}
         for lang in value:
-            if len(value[lang]) >= 20:
+            if len(value[lang]) >= 25:
                 new_value[lang] = value[lang]
         value = new_value
     return value
