@@ -17,11 +17,11 @@ import inspect
 
 # def filter_abstract(k, value):
 #     if k == "dc.description.abstract":
-#         newvalue = {}
+#         new_value = {}
 #         for lang in value:
 #             if len(value[lang])>=20:
-#                 newvalue[lang] = value[lang]
-#         value = newvalue
+#                 new_value[lang] = value[lang]
+#         value = new_value
 #     return value
 
 
@@ -35,31 +35,31 @@ def your_function_name(k, value):
 
 def filter_abstract(k, value):  # Filters abstracts that are too short
     if k == "dc.description.abstract":
-        newvalue = {}
+        new_value = {}
         for lang in value:
             if len(value[lang]) >= 20:
-                newvalue[lang] = value[lang]
-        value = newvalue
+                new_value[lang] = value[lang]
+        value = new_value
     return value
 
 
 def filter_author(k, value):  # Filters authors with the name "admin" or "."
     if k == "dc.contributor.author":
-        ListOfUnwantedNames = ["admin", "."]
-        newvalue = value
+        list_of_unwanted_names = ["admin", "."]
+        new_value = value
         for lang in list(value[0]['familyName'].keys()):
-            curname = value[0]['familyName'][lang]
-            for BadName in ListOfUnwantedNames:
-                if BadName == curname:
-                    del newvalue[0]['familyName'][lang]
+            cur_name = value[0]['familyName'][lang]
+            for bad_name in list_of_unwanted_names:
+                if bad_name == cur_name:
+                    del new_value[0]['familyName'][lang]
                     break
         for lang in list(value[0]['givenName'].keys()):
-            curname = value[0]['givenName'][lang]
-            for BadName in ListOfUnwantedNames:
-                if BadName == curname:
-                    del newvalue[0]['givenName'][lang]
+            cur_name = value[0]['givenName'][lang]
+            for bad_name in list_of_unwanted_names::
+                if bad_name == cur_name:
+                    del new_value[0]['givenName'][lang]
                     break
-        value = newvalue
+        value = new_value
     return value
 # End of Custom Ulb Functions
 
@@ -67,8 +67,8 @@ def filter_author(k, value):  # Filters authors with the name "admin" or "."
 # Do not edit below this line
 # ---------------------------
 
-def filter_metadata(k, value, filterfunctions):
-    for (sfun, func) in filterfunctions:
+def filter_metadata(k, value, filter_functions):
+    for (sfun, func) in filter_functions:
         if (sfun != inspect.currentframe().f_code.co_name):  # No recursion
             value = func(k, value)
     return value
