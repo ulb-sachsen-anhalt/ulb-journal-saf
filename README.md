@@ -71,7 +71,7 @@ pytest -v
 
 #### *conf/config.ini*
 You need to create this file from the *conf/config.ini.example* by renaming it.
-All values are commented in the file. Values that need to be changed are marked with ~/&lt;>
+All values are commented in the file. Values that need to be changed are marked with &lt;>
 
 #### *conf/config_meta.ini*
 
