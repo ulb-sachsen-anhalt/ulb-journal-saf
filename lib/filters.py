@@ -10,19 +10,22 @@ import inspect
 
 # k will be the metadata you want to assign (dc.title, ...) in config_meta
 # value will be what was parsed from the submission
+# The returned "value" needs to be the same format as the original
 
 # All functions in this file will be called automatically
 
-# Example: Remove abstracts that are too short (<25 symbols):
+# Example filter: Remove abstracts that are too short (<25 symbols):
 
 # def filter_abstract(k, value):
-#     if k == "dc.description.abstract":
-#         new_value = {}
+#     if k == "dc.description.abstract":  # Metadatum will be the abstract
+#         new_value = {}  # New dict to keep the same "value" format
 #         for lang in value:
-#             if len(value[lang])>=25:
-#                 new_value[lang] = value[lang]
-#         value = new_value
-#     return value
+#             if len(value[lang])>=25:  # Found abstract is long enough
+#                new_value[lang] = value[lang]  # Keep the found abstract
+#         value = new_value  # Replace value with new dict
+#     return value  # Only the abstracts with >25 symbols will be returned
+
+# Live example
 
 
 def your_function_name(k, value):

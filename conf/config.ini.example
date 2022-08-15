@@ -1,25 +1,34 @@
 [general]
-    # what system we are using: 'omp' or 'ojs'
+    # Path for saving logfiles
+    logpath = </desired/path/to/log>
+    # System to export from: 'omp' or 'ojs'
     system = ojs
-    # your OJS/OMP Server 
-    # token from your OJS/OMP (generate/copy with/from WEB-GUI)
+    # Monograph / Article
+    type = Article
+    # Token from your OJS/OMP (generate/copy with/from WEB-GUI)
     api_token = <token>
+    # The URL to your OJS/OMP instance
+    journal_server = <https://ojs.example.com>
+
+    # Update remote_url with DOI in OJS/OMP: True/False
+    update_remote = True
+    # You need the following token if you want to update_remote
+    token = <the token in SetRemoteUrlPlugin>
+
+    # You usually don't need to change the following
+    # Endpoints of your OJS/OMP installation
     endpoint_contexts = /api/v1/contexts?isEnabled=true
     endpoint_submissions = /api/v1/submissions
     endpoint_issues = /api/v1/issues
-    journal_server = <https://ojs.example.com>
-    # Monograph / Article
-    type = Article
-    token = <some auto generated token in SetRemoteUrlPlugin>
-    # update remote_url with DOI in OJS/OMP
-    update_remote = True
-    # path where to write logfiles
-    logpath = /home/<user>/log
+
+
+
 
 [email]
-    # configure here your mail information data
-    sender = test@example.com
-    receivers = r1@example.com  r3@example.com
+    # To send/receive report emails, fill these out
+    sender = s@example.com
+    # Different receivers split with " "
+    receivers = r1@example.com  r2@example.com
     smtp_username = abcde
     smtp_password = password_of_abcde
     smtp_server = mailserver_of_sender
@@ -27,20 +36,19 @@
 
 [export]
     # store zip (SAFs) files here
-    export_path = /home/<user>/export
+    export_path = </desired/path/for/export>
     # collection in dspace (ask your Dspace Admin for this number)
-    collection = 123456789/26132
+    collection = <123456789/26132>
     # if you write back the DOI to OJS/OMP, this will be the prefix 
     doi_prefix = http://dx.doi.org/
-    # True / False filename of galleys should be auto generated 
+    # filename of galleys should be auto generated: True/False
     generate_filename = True
 
 [scp]
-    # you need to activate server access via ssh-key
-    # dspace server
-    server = ojs.example.com
-    user = <user>
-    key_filename = /home/<user>/.ssh/<id_rsa_ojs>
+    # you need to activate dspace server access via ssh-key
+    server = <dspace.example.com>
+    user = <ssh user on dspace>
+    key_filename = <local/path/to/ssh_private_key>
 
 [docker]
     # this part is only for direct dspace docker access (see section [dspace])
@@ -48,8 +56,8 @@
     user = dspace
 
 [dspace]
-    server_zipsource = /opt/dspace-test/volumes/infrastructure/ojs_omp/source/
-    server_doifiles = /opt/dspace-test/volumes/infrastructure/ojs_omp/doi/
+    server_zipsource = <desired/path/to/store/zips/on/dspace/source>
+    server_doifiles = <desired/path/to/store/dois/on/dspace/doi>
 
     ## following is only for direct Dspace docker access 
     ## you need to activate/include the module *transfer_saf.py*
@@ -60,9 +68,11 @@
     # docker_zipsource = /opt/dspace/repo/infrastructure/ojs_omp/source/
     # extra = --disable_inheritance
 
-#  filter journals, monographs from treating
+#  Filter journals, monographs
+#  whitelist: only use those
 [white-list]
-    journals = name_of_journal1
-
+    journals = url_name_of_journal1
+    
+#  blacklist: never use those
 [black-list]
-    journals = name_of_journal2 name_of_journal3
+    journals = url_name_of_journal2 url_name_of_journal3
