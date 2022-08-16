@@ -38,7 +38,7 @@ The following directory structure needs to exist on the DSpace server:
 ## 4. DOI Information checks in DSpace and storage in the metadaten schema of OJS/OMP
 Everytime _journal2saf.py_ is executed, the script checks if DOIs from SAF files which have been already exported to DSpace are available on the DSpace server. If it finds new DOIs, they get copied onto the OJS/OMP server.
 
-&#9755; For each ressource ((a _galley_ or _publicationFormat_) in OJS/OMP terminology) in a journal an external URL can be stored in the field ([urlRemote](https://docs.pkp.sfu.ca/dev/api/ojs/3.1#tag/Submissions/paths/~1submissions~1{submissionId}/get))
+&#9755; For each resource ((a _galley_ or _publicationFormat_) in OJS/OMP terminology) in a journal an external URL can be stored in the field ([urlRemote](https://docs.pkp.sfu.ca/dev/api/ojs/3.1#tag/Submissions/paths/~1submissions~1{submissionId}/get))
 
 
 If the _conf/config.ini_ setting "update_remote" is true, the script _journal2saf.py_ ensures that the newly available DOIs are stored in OJS/OMP as the *urlRemote* attribute for each publication. For this to work properly, the OJS/OMP Plugin [SetRemoteUrlPlugin](https://github.com/ulb-sachsen-anhalt/setRemoteUrlPlugin) must be previously installed.
