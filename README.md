@@ -5,7 +5,7 @@
 
 Automatic publication of contents of OJS and OMP resources (journals, series, monographs) in a DSpace 6.3 repository.
 DOI registration of exported contents via the DSpace repository.
-Return and sotre the DOI metadata information into the OJS and OMP systems.
+Return and store the DOI metadata information into the OJS and OMP systems.
 
 
 
