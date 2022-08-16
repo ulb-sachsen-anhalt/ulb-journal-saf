@@ -3,7 +3,7 @@
 
 ## General Goals 
 
-Automatic publication of contents of OJS and OMP ressources (journals, series, monographs) in a DSpace 6.3 repository.
+Automatic publication of contents of OJS and OMP resources (journals, series, monographs) in a DSpace 6.3 repository.
 DOI registration of exported contents via the DSpace repository.
 Return and sotre the DOI metadata information into the OJS and OMP systems.
 
@@ -11,7 +11,7 @@ Return and sotre the DOI metadata information into the OJS and OMP systems.
 
 ## 1. Metadata retrieval in OJS/OMP
 
-In this first step the python script _journal2saf.py_ is used to get all relevant metadata for the ressource in a given [OMP](https://pkp.sfu.ca/omp) or [OJS](https://pkp.sfu.ca/ojs/) server which are marked already as **published** and that are to be sent to DSpace. This is done via the [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3). It will only export ressources that have not been exported with it yet.
+In this first step the python script _journal2saf.py_ is used to get all relevant metadata for the resource in a given [OMP](https://pkp.sfu.ca/omp) or [OJS](https://pkp.sfu.ca/ojs/) server which are marked already as **published** and that are to be sent to DSpace. This is done via the [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3). It will only export resources that have not been exported with it yet.
  
 ## 2. Creation of SAF-Data Packages for the import and copying to DSpace
 
