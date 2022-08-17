@@ -82,7 +82,7 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
     message["From"] = sender
     message["To"] = receiver
     message["Subject"] = subject + " OJS-DSpace-Migration: Report"
-    message.attach(MIMEText(Content, "plain"))
+    message.attach(MIMEText(content, "plain"))
 
     full_email = message.as_string()
 
