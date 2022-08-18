@@ -36,6 +36,15 @@ def your_function_name(k, value):
 
 # Begin of Custom ULB functions:
 
+
+def remove_html_elements(k, value):  # Schlechtendalia
+    if k == "dc.description.abstract" or k == "dc.description.note":
+        import re
+        CLEANR = re.compile('<.*?>')
+        value = re.sub(CLEANR, '', value)
+    return value
+
+
 def filter_abstract(k, value):  # Filters abstracts that are too short
     if k == "dc.description.abstract":
         new_value = {}
