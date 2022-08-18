@@ -133,11 +133,6 @@ class ExportSAF:
                                     + " - Missing: " + k
                                     )
 
-                if isinstance(value, dict):
-                    if locale in value:
-                        value = value[locale]
-                        meta_tpl[-1] = f' language="{language}"'
-
                 # special treatment for multiple entries
                 if k == "dc.contributor.author":
                     if isinstance(value, list):
@@ -151,8 +146,15 @@ class ExportSAF:
                                     schema, []).append((value, *meta_tpl), )
                     continue
             if value:
-                schema_dict.setdefault(
-                    schema, []).append((value, *meta_tpl), )
+                if isinstance(value, dict):
+                    for locale in value.keys():
+                        value = value[locale]
+                        meta_tpl[-1] = f' language="{language}"'
+                        schema_dict.setdefault(
+                            schema, []).append((value, *meta_tpl), )
+                else:
+                    schema_dict.setdefault(
+                            schema, []).append((value, *meta_tpl), )
 
         for schema, dcl in schema_dict.items():
             self.write_xml_file(item_folder, dcl, schema)
