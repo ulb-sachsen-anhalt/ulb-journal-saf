@@ -9,7 +9,6 @@ import pycountry
 import requests
 import inspect
 from pathlib import Path
-from bs4 import BeautifulSoup
 from .data_miner import STATE_PROCESSED, STATE_SKIP
 from . import filters  # Need to see whole file to get all functions
 
@@ -97,12 +96,9 @@ class ExportSAF:
 
     def write_meta_file(self, item_folder, submission) -> None:
         """write metadata_<schema>.xml"""
-        locale = submission.locale
         schema_dict = {}
         # eval-call will use following variables
         context = submission.parent
-        language = self.locale2isolang(locale)
-        logger.debug(f"{context.url_path} {language}")
         pages = submission.publication.get('pages', 0)
         pagestart = pageend = pages
         try:
@@ -137,25 +133,31 @@ class ExportSAF:
                 if k == "dc.contributor.author":
                     if isinstance(value, list):
                         for auth in value:
-                            if locale in auth['givenName'].keys() and\
-                                    locale in auth['familyName'].keys():
-                                first = auth['givenName'][locale]
-                                family = auth['familyName'][locale]
-                                value = f"{family}, {first}"
-                                schema_dict.setdefault(
-                                    schema, []).append((value, *meta_tpl), )
-                    continue
+                            for locale in auth['givenName'].keys():
+                                if locale in auth['familyName'].keys():
+                                    first = auth['givenName'][locale]
+                                    family = auth['familyName'][locale]
+                                    if first != "" and family != "":
+                                        value_cur = f"{family}, {first}"
+                                        lang_a = self.locale2isolang(locale)
+                                        meta_tpl[-1] = f' language="{lang_a}"'
+                                        schema_dict.setdefault(
+                                            schema, []).append(
+                                                (value_cur, *meta_tpl), )
+
             if value:
                 if isinstance(value, dict):
-                    for locale in value.keys():
-                        value = value[locale]
-                        meta_tpl[-1] = f' language="{language}"'
-                        schema_dict.setdefault(
-                            schema, []).append((value, *meta_tpl), )
+                    for locale_meta in value.keys():
+                        value_cur = value[locale_meta]
+                        if value_cur != "":
+                            language = self.locale2isolang(locale_meta)
+                            meta_tpl[-1] = f' language="{language}"'
+                            schema_dict.setdefault(
+                                schema, []).append((value_cur, *meta_tpl), )
                 else:
-                    schema_dict.setdefault(
-                            schema, []).append((value, *meta_tpl), )
-
+                    if k != "dc.contributor.author":
+                        schema_dict.setdefault(
+                                schema, []).append((value, *meta_tpl), )
         for schema, dcl in schema_dict.items():
             self.write_xml_file(item_folder, dcl, schema)
 

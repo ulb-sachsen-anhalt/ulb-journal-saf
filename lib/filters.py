@@ -41,7 +41,11 @@ def remove_html_elements(k, value):  # Schlechtendalia
     if k == "dc.description.abstract" or k == "dc.description.note":
         import re
         CLEANR = re.compile('<.*?>')
-        value = re.sub(CLEANR, '', value)
+        if isinstance(value, dict):
+            for key in value.keys():
+                value[key] = re.sub(CLEANR, '', value[key])
+        else:
+            value = re.sub(CLEANR, '', value)
     return value
 
 
