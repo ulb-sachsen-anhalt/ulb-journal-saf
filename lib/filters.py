@@ -35,6 +35,23 @@ def your_function_name(k, value):
 
 
 # Begin of Custom ULB functions:
+def remove_double_metadata(k, value):  # eng-ger doubles
+    if k == "dc.subject" or\
+        k == "dc.publisher" or\
+        k == "dc.relation.ispartof" or\
+        k == "dc.description.abstract" or\
+            k == "dc.description.note":
+        CopiedValue1 = value.copy()
+        CopiedValue2 = value.copy()
+        for key in value.keys():
+            for key2 in CopiedValue1.keys():
+                if key2 != key:
+                    if value[key] == CopiedValue1[key2]:
+                        if key in CopiedValue2.keys() and\
+                                len(CopiedValue2.keys()) > 1:
+                            del CopiedValue2[key]
+        value = CopiedValue2
+    return value
 
 
 def remove_html_elements(k, value):  # Schlechtendalia
