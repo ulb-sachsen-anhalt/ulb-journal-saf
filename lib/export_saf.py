@@ -144,12 +144,11 @@ class ExportSAF:
                                         schema_dict.setdefault(
                                             schema, []).append(
                                                 (value_cur, *meta_tpl), )
-
             if value:
                 if isinstance(value, dict):
                     for locale_meta in value.keys():
                         value_cur = value[locale_meta]
-                        if value_cur != "":
+                        if value_cur != "" and value_cur != []:                      
                             language = self.locale2isolang(locale_meta)
                             meta_tpl[-1] = f' language="{language}"'
                             schema_dict.setdefault(
