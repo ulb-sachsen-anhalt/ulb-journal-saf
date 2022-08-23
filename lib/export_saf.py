@@ -54,7 +54,8 @@ class ExportSAF:
                              .replace('& ', '&amp; ')
                              .replace('<', '&lt;')
                              .replace('>', '&gt;')
-                             .replace("&nbsp;", " "), )
+                             .replace("&nbsp;", " ")
+                             .replace("", ""), )
                 for i in range(len(tpl)-1):
                     new_tuple = new_tuple + (tpl[i+1], )
                 dblcore.append(new_tuple)
