@@ -41,6 +41,7 @@ def remove_double_metadata(k, value):  # eng-ger doubles
         k == "dc.relation.ispartof" or\
         k == "dc.description.abstract" or\
         k == "dc.description.note" or\
+        k == "dc.title" or\
             k == "local.bibliographicCitation.journaltitle":
         CopiedValue1 = value.copy()
         CopiedValue2 = value.copy()
