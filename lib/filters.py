@@ -38,20 +38,74 @@ def _0_your_function_name(k, value):
 
 
 # Begin of Custom ULB functions:
+def _1_filter_author(k, value):  # Filter authors with the name "admin" or "."
+    if k == "dc.contributor.author":
+        list_of_unwanted_names = ["admin", "."]
+        new_value = value
+        for lang in list(value[0]['familyName'].keys()):
+            cur_name = value[0]['familyName'][lang]
+            for bad_name in list_of_unwanted_names:
+                if bad_name == cur_name:
+                    del new_value[0]['familyName'][lang]
+                    break
+        for lang in list(value[0]['givenName'].keys()):
+            cur_name = value[0]['givenName'][lang]
+            for bad_name in list_of_unwanted_names:
+                if bad_name == cur_name:
+                    del new_value[0]['givenName'][lang]
+                    break
+        value = new_value
+    return value
 
-def _3_remove_spaces(k, value):
+
+def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
+    list_of_potential_html_metadata = ["dc.description.abstract",
+                                       "dc.description.note"]
+    if k in list_of_potential_html_metadata:
+        CLEANR = re.compile('<.*?>')
+        if isinstance(value, dict):
+            for key in value.keys():
+                value[key] = re.sub(CLEANR, '', value[key])
+        else:
+            value = re.sub(CLEANR, '', value)
+    return value
+
+
+def _3_remove_controls(k, value):  # Filter control chars that break xml
+    list_of_control_chars = [""]
+    list_of_control_metadata = ["dc.description.abstract",
+                                "dc.title"]
+    if k in list_of_control_metadata:
+        for lang in value:
+            for cchar in list_of_control_chars:
+                value[lang] = value[lang].replace(cchar, "")
+    return value
+
+
+def _4_remove_spaces(k, value):  # Remove spaces and double spaces
     list_of_potential_space_metadata = ["dc.description.abstract",
                                         "dc.description.note"]
     if k in list_of_potential_space_metadata:
         if isinstance(value, dict):
             for key in value.keys():
-                value[key] = value[key].replace("&nbsp;", " ").strip()
+                value[key] = value[key].replace("&nbsp;", " ")\
+                                        .strip().replace("  ", " ")
         else:
-            value = value.replace("&nbsp;", " ").strip()
+            value = value.replace("&nbsp;", " ").strip().replace("  ", " ")
     return value
 
 
-def _5_remove_double_metadata(k, value):  # eng-ger doubles
+def _5_filter_abstract(k, value):  # Filters abstracts that are too short
+    if k == "dc.description.abstract":
+        new_value = {}
+        for lang in value:
+            if len(value[lang]) >= 40:
+                new_value[lang] = value[lang]
+        value = new_value
+    return value
+
+
+def _6_remove_double_metadata(k, value):  # eng-ger doubles
     list_of_potential_doubles = ["dc.subject",
                                  "dc.publisher",
                                  "dc.relation.ispartof",
@@ -70,49 +124,6 @@ def _5_remove_double_metadata(k, value):  # eng-ger doubles
                         if key in new_value.keys() and\
                                 len(new_value.keys()) > 1:
                             del new_value[key]
-        value = new_value
-    return value
-
-
-def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
-    list_of_potential_html_metadata = ["dc.description.abstract",
-                                       "dc.description.note"]
-    if k in list_of_potential_html_metadata:
-        CLEANR = re.compile('<.*?>')
-        if isinstance(value, dict):
-            for key in value.keys():
-                value[key] = re.sub(CLEANR, '', value[key])
-        else:
-            value = re.sub(CLEANR, '', value)
-    return value
-
-
-def _4_filter_abstract(k, value):  # Filters abstracts that are too short
-    if k == "dc.description.abstract":
-        new_value = {}
-        for lang in value:
-            if len(value[lang]) >= 40:
-                new_value[lang] = value[lang]
-        value = new_value
-    return value
-
-
-def _1_filter_author(k, value):  # Filters authors with the name "admin" or "."
-    if k == "dc.contributor.author":
-        list_of_unwanted_names = ["admin", "."]
-        new_value = value
-        for lang in list(value[0]['familyName'].keys()):
-            cur_name = value[0]['familyName'][lang]
-            for bad_name in list_of_unwanted_names:
-                if bad_name == cur_name:
-                    del new_value[0]['familyName'][lang]
-                    break
-        for lang in list(value[0]['givenName'].keys()):
-            cur_name = value[0]['givenName'][lang]
-            for bad_name in list_of_unwanted_names:
-                if bad_name == cur_name:
-                    del new_value[0]['givenName'][lang]
-                    break
         value = new_value
     return value
 # End of Custom ULB Functions
