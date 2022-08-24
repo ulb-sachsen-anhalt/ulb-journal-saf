@@ -129,7 +129,7 @@ class DataPoll():
             query_publishers = self.rest_call_contexts(offset)
             batch_ = self._server_request(query_publishers)
             logger.info(
-                f"Itmes: {[publ['urlPath'] for publ in batch_['items']]}")
+                f"Items: {[publ['urlPath'] for publ in batch_['items']]}")
 
             for item in batch_['items']:
                 _href = item['_href']
