@@ -150,12 +150,12 @@ class TaskDispatcher:
                 for receiver in receivers.split():
                     logger.info('try send report to %s', receiver)
                     msg = self.report.report
-                    send_report(sender, user_, pass_
-                                , server_, port_, receiver
-                                , self.report.has_error()
-                                , msg)
+                    send_report(sender, user_, pass_,
+                                server_, port_, receiver,
+                                self.report.has_error(), msg)
             else:
-                logger.info('no receiver in section email found in config, skip')
+                logger.info(
+                    'no receiver in section email found in config, skip')
         else:
             logger.info('no section email found in config, skip')
 
