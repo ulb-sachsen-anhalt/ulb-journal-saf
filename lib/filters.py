@@ -31,14 +31,27 @@ import re
 # Live example
 
 
-def your_function_name(k, value):
+def _0_your_function_name(k, value):
     if k == "Metadata_you_want_to_filter":
         pass  # Change "value" to your likings
     return value
 
 
 # Begin of Custom ULB functions:
-def _4_remove_double_metadata(k, value):  # eng-ger doubles
+
+def _3_remove_spaces(k, value):
+    list_of_potential_space_metadata = ["dc.description.abstract",
+                                        "dc.description.note"]
+    if k in list_of_potential_space_metadata:
+        if isinstance(value, dict):
+            for key in value.keys():
+                value[key] = value[key].replace("&nbsp;", " ").strip()
+        else:
+            value = value.replace("&nbsp;", " ").strip()
+    return value
+
+
+def _5_remove_double_metadata(k, value):  # eng-ger doubles
     list_of_potential_doubles = ["dc.subject",
                                  "dc.publisher",
                                  "dc.relation.ispartof",
@@ -62,8 +75,9 @@ def _4_remove_double_metadata(k, value):  # eng-ger doubles
 
 
 def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
-    if k == "dc.description.abstract" or k == "dc.description.note":
-
+    list_of_potential_html_metadata = ["dc.description.abstract",
+                                       "dc.description.note"]
+    if k in list_of_potential_html_metadata:
         CLEANR = re.compile('<.*?>')
         if isinstance(value, dict):
             for key in value.keys():
@@ -73,7 +87,7 @@ def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
     return value
 
 
-def _3_filter_abstract(k, value):  # Filters abstracts that are too short
+def _4_filter_abstract(k, value):  # Filters abstracts that are too short
     if k == "dc.description.abstract":
         new_value = {}
         for lang in value:
