@@ -60,7 +60,8 @@ def _1_filter_author(k, value):  # Filter authors with the name "admin" or "."
 
 def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
     list_of_potential_html_metadata = ["dc.description.abstract",
-                                       "dc.description.note"]
+                                       "dc.description.note",
+                                       "dc.title"]
     if k in list_of_potential_html_metadata:
         CLEANR = re.compile('<.*?>')
         if isinstance(value, dict):
