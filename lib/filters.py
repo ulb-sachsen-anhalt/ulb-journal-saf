@@ -14,9 +14,12 @@ import re
 
 # All functions in this file will be called automatically
 
+# The function name should start with _X_ , where X is a number
+# Functions will be used from the lowest number to the highest (alphabetically)
+
 # Example filter: Remove abstracts that are too short (<40 symbols):
 
-# def filter_abstract(k, value):
+# def _1_filter_abstract(k, value):
 #     if k == "dc.description.abstract":  # Metadatum will be the abstract
 #         new_value = {}  # New dict to keep the same "value" format
 #         for lang in value:
@@ -35,7 +38,7 @@ def your_function_name(k, value):
 
 
 # Begin of Custom ULB functions:
-def remove_double_metadata(k, value):  # eng-ger doubles
+def _4_remove_double_metadata(k, value):  # eng-ger doubles
     list_of_potential_doubles = ["dc.subject",
                                  "dc.publisher",
                                  "dc.relation.ispartof",
@@ -58,7 +61,7 @@ def remove_double_metadata(k, value):  # eng-ger doubles
     return value
 
 
-def remove_html_elements(k, value):  # Remove HTML elements like <p>
+def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
     if k == "dc.description.abstract" or k == "dc.description.note":
 
         CLEANR = re.compile('<.*?>')
@@ -70,7 +73,7 @@ def remove_html_elements(k, value):  # Remove HTML elements like <p>
     return value
 
 
-def filter_abstract(k, value):  # Filters abstracts that are too short
+def _3_filter_abstract(k, value):  # Filters abstracts that are too short
     if k == "dc.description.abstract":
         new_value = {}
         for lang in value:
@@ -80,7 +83,7 @@ def filter_abstract(k, value):  # Filters abstracts that are too short
     return value
 
 
-def filter_author(k, value):  # Filters authors with the name "admin" or "."
+def _1_filter_author(k, value):  # Filters authors with the name "admin" or "."
     if k == "dc.contributor.author":
         list_of_unwanted_names = ["admin", "."]
         new_value = value
