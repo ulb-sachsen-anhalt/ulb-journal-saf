@@ -1,5 +1,5 @@
 import inspect
-
+import re
 # Add your custom filters here
 # All functions need to follow the scheme:
 
@@ -14,16 +14,16 @@ import inspect
 
 # All functions in this file will be called automatically
 
-# Example filter: Remove abstracts that are too short (<25 symbols):
+# Example filter: Remove abstracts that are too short (<40 symbols):
 
 # def filter_abstract(k, value):
 #     if k == "dc.description.abstract":  # Metadatum will be the abstract
 #         new_value = {}  # New dict to keep the same "value" format
 #         for lang in value:
-#             if len(value[lang])>=25:  # Found abstract is long enough
+#             if len(value[lang])>=40:  # Found abstract is long enough
 #                new_value[lang] = value[lang]  # Keep the found abstract
 #         value = new_value  # Replace value with new dict
-#     return value  # Only the abstracts with >25 symbols will be returned
+#     return value  # Only the abstracts with >40 symbols will be returned
 
 # Live example
 
@@ -36,29 +36,31 @@ def your_function_name(k, value):
 
 # Begin of Custom ULB functions:
 def remove_double_metadata(k, value):  # eng-ger doubles
-    if k == "dc.subject" or\
-        k == "dc.publisher" or\
-        k == "dc.relation.ispartof" or\
-        k == "dc.description.abstract" or\
-        k == "dc.description.note" or\
-        k == "dc.title" or\
-            k == "local.bibliographicCitation.journaltitle":
-        CopiedValue1 = value.copy()
-        CopiedValue2 = value.copy()
+    list_of_potential_doubles = ["dc.subject",
+                                 "dc.publisher",
+                                 "dc.relation.ispartof",
+                                 "dc.description.abstract",
+                                 "dc.description.note",
+                                 "dc.title",
+                                 "local.bibliographicCitation.journaltitle"
+                                 ]
+    if k in list_of_potential_doubles:
+        compare_value = value.copy()
+        new_value = value.copy()
         for key in value.keys():
-            for key2 in CopiedValue1.keys():
+            for key2 in compare_value.keys():
                 if key2 != key:
-                    if value[key] == CopiedValue1[key2]:
-                        if key in CopiedValue2.keys() and\
-                                len(CopiedValue2.keys()) > 1:
-                            del CopiedValue2[key]
-        value = CopiedValue2
+                    if value[key] == compare_value[key2]:
+                        if key in new_value.keys() and\
+                                len(new_value.keys()) > 1:
+                            del new_value[key]
+        value = new_value
     return value
 
 
-def remove_html_elements(k, value):  # Schlechtendalia
+def remove_html_elements(k, value):  # Remove HTML elements like <p>
     if k == "dc.description.abstract" or k == "dc.description.note":
-        import re
+
         CLEANR = re.compile('<.*?>')
         if isinstance(value, dict):
             for key in value.keys():
@@ -72,7 +74,7 @@ def filter_abstract(k, value):  # Filters abstracts that are too short
     if k == "dc.description.abstract":
         new_value = {}
         for lang in value:
-            if len(value[lang]) >= 25:
+            if len(value[lang]) >= 40:
                 new_value[lang] = value[lang]
         value = new_value
     return value
