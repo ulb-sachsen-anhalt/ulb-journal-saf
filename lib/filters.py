@@ -98,7 +98,7 @@ def filter_author(k, value):  # Filters authors with the name "admin" or "."
                     break
         value = new_value
     return value
-# End of Custom Ulb Functions
+# End of Custom ULB Functions
 
 
 # Do not edit below this line
