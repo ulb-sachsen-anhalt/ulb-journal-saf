@@ -10,8 +10,8 @@ from pathlib import Path
 from .data_miner import STATE_PROCESSED, STATE_SKIP
 import requests
 from bs4 import BeautifulSoup
-from . import filters # Need to see whole file to get all functions
-import inspect # to get all functions
+from . import filters  # Need to see whole file to get all functions
+import inspect  # to get all functions
 
 logger = logging.getLogger('journals-logging-handler')
 
@@ -37,7 +37,7 @@ class ExportSAF:
         self.type = g['type']
         self.generate_filename = e.getboolean(
             'generate_filename', fallback=False)
-        self.filters = inspect.getmembers(filters, inspect.isfunction)
+        self.filters_ = inspect.getmembers(filters, inspect.isfunction)
 
     @staticmethod
     def write_xml_file(work_dir, dblcore, schema) -> None:
@@ -109,7 +109,7 @@ class ExportSAF:
                 # static value, read from config as string
                 value = v[1:-1]
             else:
-                value = filters.filter_metadata(k, eval(v), self.filters)
+                value = filters.filter_metadata(k, eval(v), self.filters_)
                 if value == '':
                     LoggerPID = str(submission._data['currentPublicationId'])
                     LoggerSID = str(submission._data['submissionId'])
