@@ -38,9 +38,9 @@ def _0_your_function_name(k, value):
 
 
 # Begin of Custom ULB functions:
-def _1_filter_author(k, value):  # Filter authors with the name "admin" or "."
+def _1_filter_author(k, value):  # Filter authors with the placeholder names
     if k == "dc.contributor.author":
-        list_of_unwanted_names = ["admin", "."]
+        list_of_unwanted_names = ["admin", ".", "Verschiedene", "Autoren"]
         new_value = value
         for lang in list(value[0]['familyName'].keys()):
             cur_name = value[0]['familyName'][lang]
@@ -58,7 +58,14 @@ def _1_filter_author(k, value):  # Filter authors with the name "admin" or "."
     return value
 
 
-def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
+def _2_remove_placeholder_issue(k, value):  # local.bibliographicCitation= "."
+    if k == "local.bibliographicCitation.issue":
+        if value == ".":
+            value = ""
+    return value
+
+
+def _3_remove_html_elements(k, value):  # Remove HTML elements like <p>
     list_of_potential_html_metadata = ["dc.description.abstract",
                                        "dc.description.note",
                                        "dc.title"]
@@ -72,7 +79,7 @@ def _2_remove_html_elements(k, value):  # Remove HTML elements like <p>
     return value
 
 
-def _3_remove_controls(k, value):  # Filter control chars that break xml
+def _4_remove_controls(k, value):  # Filter control chars that break xml
     list_of_control_chars = [""]
     list_of_control_metadata = ["dc.description.abstract",
                                 "dc.title"]
@@ -83,7 +90,7 @@ def _3_remove_controls(k, value):  # Filter control chars that break xml
     return value
 
 
-def _4_remove_spaces(k, value):  # Remove spaces and double spaces
+def _5_remove_spaces(k, value):  # Remove spaces and double spaces
     list_of_potential_space_metadata = ["dc.description.abstract",
                                         "dc.description.note"]
     if k in list_of_potential_space_metadata:
@@ -96,7 +103,7 @@ def _4_remove_spaces(k, value):  # Remove spaces and double spaces
     return value
 
 
-def _5_filter_abstract(k, value):  # Filters abstracts that are too short
+def _6_filter_abstract(k, value):  # Filters abstracts that are too short
     if k == "dc.description.abstract":
         new_value = {}
         for lang in value:
@@ -106,7 +113,7 @@ def _5_filter_abstract(k, value):  # Filters abstracts that are too short
     return value
 
 
-def _6_remove_double_metadata(k, value):  # eng-ger doubles
+def _7_remove_double_metadata(k, value):  # eng-ger doubles
     list_of_potential_doubles = ["dc.subject",
                                  "dc.publisher",
                                  "dc.relation.ispartof",
