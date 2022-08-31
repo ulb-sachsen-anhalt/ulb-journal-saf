@@ -6,11 +6,12 @@ import logging
 import shutil
 import mimetypes
 import pycountry
-import requests
-import inspect
 from pathlib import Path
 from .data_miner import STATE_PROCESSED, STATE_SKIP
+import requests
+from bs4 import BeautifulSoup
 from . import filters  # Need to see whole file to get all functions
+import inspect  # to get all functions
 
 logger = logging.getLogger('journals-logging-handler')
 
@@ -36,10 +37,10 @@ class ExportSAF:
         self.type = g['type']
         self.generate_filename = e.getboolean(
             'generate_filename', fallback=False)
-        self.filters = inspect.getmembers(filters, inspect.isfunction)
+        self.filters_ = inspect.getmembers(filters, inspect.isfunction)
 
     @staticmethod
-    def write_xml_file(work_dir, dblcore_original, schema) -> None:
+    def write_xml_file(work_dir, dblcore, schema) -> None:
         """write dublin_core.xml or metadata_<schema>.xml file"""
         name = 'dublin_core.xml' if schema == 'dc'\
                else f'metadata_{schema}.xml'
@@ -47,20 +48,6 @@ class ExportSAF:
         pth = work_dir / name
         logger.debug(f"write {name}")
         dcline = '  <dcvalue element="{1}" qualifier="{2}"{3}>{0}</dcvalue>'
-        dblcore = []
-        for tpl in dblcore_original:
-            if isinstance(tpl[0], str):
-                new_tuple = (tpl[0]
-                             .replace('& ', '&amp; ')
-                             .replace('<', '&lt;')
-                             .replace('>', '&gt;')
-                             .replace("&nbsp;", " ")
-                             .replace("", ""), )
-                for i in range(len(tpl)-1):
-                    new_tuple = new_tuple + (tpl[i+1], )
-                dblcore.append(new_tuple)
-            else:
-                dblcore.append(tpl)
         dcvalues = [dcline.format(*tpl) for tpl in dblcore]
         schema = f' schema="{schema}"' if schema != 'dc' else ''
 
@@ -98,9 +85,12 @@ class ExportSAF:
 
     def write_meta_file(self, item_folder, submission) -> None:
         """write metadata_<schema>.xml"""
+        locale = submission.locale
         schema_dict = {}
         # eval-call will use following variables
         context = submission.parent
+        language = self.locale2isolang(locale)
+        logger.debug(f"{context.url_path} {language}")
         pages = submission.publication.get('pages', 0)
         pagestart = pageend = pages
         try:
@@ -119,7 +109,7 @@ class ExportSAF:
                 # static value, read from config as string
                 value = v[1:-1]
             else:
-                value = filters.filter_metadata(k, eval(v), self.filters)
+                value = filters.filter_metadata(k, eval(v), self.filters_)
                 if value == '':
                     LoggerPID = str(submission._data['currentPublicationId'])
                     LoggerSID = str(submission._data['submissionId'])
@@ -131,34 +121,37 @@ class ExportSAF:
                                     + " - Missing: " + k
                                     )
 
+                if isinstance(value, dict):
+                    if locale in value:
+                        value = value[locale]
+                        meta_tpl[-1] = f' language="{language}"'
+
+                if isinstance(value, str) and\
+                        (value.count('<') and value.count('>')):
+                    # parse html input
+                    soup = BeautifulSoup(value, features="html.parser")
+                    # value = soup.get_text()
+                    # value = value.replace('& ', '&amp; ')
+                    value = soup.get_text().replace('& ', '&amp; ')\
+                        .replace('<', '&lt;')\
+                        .replace('>', '&gt;')\
+
                 # special treatment for multiple entries
                 if k == "dc.contributor.author":
                     if isinstance(value, list):
                         for auth in value:
-                            for locale in auth['givenName'].keys():
+                            if locale in auth['givenName'].keys():
                                 if locale in auth['familyName'].keys():
                                     first = auth['givenName'][locale]
                                     family = auth['familyName'][locale]
-                                    if first != "" and family != "":
-                                        value_cur = f"{family}, {first}"
-                                        lang_a = self.locale2isolang(locale)
-                                        meta_tpl[-1] = f' language="{lang_a}"'
-                                        schema_dict.setdefault(
-                                            schema, []).append(
-                                                (value_cur, *meta_tpl), )
+                                    value = f"{family}, {first}"
+                                    schema_dict.setdefault(
+                                        schema, []).append((value, *meta_tpl), )
+                    continue
             if value:
-                if isinstance(value, dict):
-                    for locale_meta in value.keys():
-                        value_cur = value[locale_meta]
-                        if value_cur != "" and value_cur != []:
-                            language = self.locale2isolang(locale_meta)
-                            meta_tpl[-1] = f' language="{language}"'
-                            schema_dict.setdefault(
-                                schema, []).append((value_cur, *meta_tpl), )
-                else:
-                    if k != "dc.contributor.author":
-                        schema_dict.setdefault(
-                                schema, []).append((value, *meta_tpl), )
+                schema_dict.setdefault(
+                    schema, []).append((value, *meta_tpl), )
+
         for schema, dcl in schema_dict.items():
             self.write_xml_file(item_folder, dcl, schema)
 
