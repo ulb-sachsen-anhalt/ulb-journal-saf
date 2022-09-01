@@ -1,4 +1,4 @@
-# Harvesting of datasets from the ULB Sachsen-Anhalt's OJS/OMP installations to a DSpace based Repository
+# Harvesting and export of datasets from the ULB Sachsen-Anhalt's OJS/OMP installations to a DSpace based Repository
 
 
 ## General Goals 
@@ -11,7 +11,7 @@ Return and store the DOI metadata information into the OJS and OMP systems.
 
 ## 1. Metadata retrieval in OJS/OMP
 
-In this first step the python script _journal2saf.py_ is used to get all relevant metadata for the resources in a given [OMP](https://pkp.sfu.ca/omp) or [OJS](https://pkp.sfu.ca/ojs/) server which are marked as **published** and that are to be sent to DSpace. This is done via the [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3). It will only export resources that have not been exported with it yet.
+In this first step the python script _journal2saf.py_ is used to get all relevant metadata for the resources in a given [OMP](https://pkp.sfu.ca/omp) or [OJS](https://pkp.sfu.ca/ojs/) server which are marked as **published** and that are to be sent to DSpace. This is done via the [REST-API](https://docs.pkp.sfu.ca/dev/api/ojs/3.3). The script will only export resources that have not been exported with it yet.
  
 ## 2. Creation of SAF-Data Packages for the import and copying to DSpace
 
@@ -75,7 +75,7 @@ All values are commented in the file. Values that need to be changed are marked 
 
 #### *conf/config_meta.ini*
 
-In the _config_meta.ini_ file, the metadata available from the OJS/OMP system which should be exported in the corresponding XML files are marked. The schema can be expanded as required as long as values which are valid for the API request are used.
+In the _config_meta.ini_ file, the metadata available from the OJS/OMP system which should be exported in the corresponding XML files are marked. The schema can be expanded as required as long as values which are valid for the API request are used. Here developing teams should ensure their implemented metadata mapping is conformant with cataloguing standards.
 
 Static values need to be marked in quotation marks and these are then not read. The examples used in this project for the OJS and OMP installations are available in folder ./_conf_.
 
