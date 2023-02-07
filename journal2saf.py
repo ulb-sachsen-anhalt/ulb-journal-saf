@@ -146,13 +146,14 @@ class TaskDispatcher:
             pass_ = CP.get('email', 'smtp_password')
             server_ = CP.get('email', 'smtp_server')
             port_ = CP.get('email', 'smtp_port')
+            system_ = CP.get('general', 'system')
             if receivers:
                 for receiver in receivers.split():
                     logger.info('try send report to %s', receiver)
                     msg = self.report.report
                     send_report(sender, user_, pass_,
                                 server_, port_, receiver,
-                                self.report.has_error(), msg)
+                                self.report.has_error(), msg, system_)
             else:
                 logger.info(
                     'no receiver in section email found in config, skip')

@@ -40,7 +40,8 @@ def _0_your_function_name(k, value):
 # Begin of Custom ULB functions:
 def _1_filter_author(k, value):  # Filter authors with the placeholder names
     if k == "dc.contributor.author":
-        list_of_unwanted_names = ["admin", ".", "Verschiedene", "Autoren"]
+        list_of_unwanted_names = ["admin", ".", "Verschiedene", "Autoren",
+                                  "Editor", "Herausgeber"]
         new_value = value
         for lang in list(value[0]['familyName'].keys()):
             cur_name = value[0]['familyName'][lang]
@@ -122,7 +123,7 @@ def _7_remove_double_metadata(k, value):  # eng-ger doubles
                                  "dc.title",
                                  "local.bibliographicCitation.journaltitle"
                                  ]
-    if k in list_of_potential_doubles:
+    if k in list_of_potential_doubles and isinstance(value, dict):
         compare_value = value.copy()
         new_value = value.copy()
         for key in value.keys():
@@ -134,6 +135,15 @@ def _7_remove_double_metadata(k, value):  # eng-ger doubles
                             del new_value[key]
         value = new_value
     return value
+
+
+def _8_fix_license(k, value):  # Make sure license URLs end with "/"
+    if k == "dc.rights.uri":
+        if "http" in value:
+            if value[-1] != "/":
+                value = value + "/"
+    return value
+
 # End of Custom ULB Functions
 
 

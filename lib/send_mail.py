@@ -9,6 +9,7 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate
 
 import logging
 
@@ -23,7 +24,8 @@ def create_smtp_session(login, password, server, port):
     return session
 
 
-def send_report(sender, login, passwd, server, port, receiver, error, report):
+def send_report(sender, login, passwd, server, port, receiver, error,
+                report, system):
     # sender: Sender email
     # login: Login for mailserver
     # passwd: Password for login
@@ -81,7 +83,9 @@ def send_report(sender, login, passwd, server, port, receiver, error, report):
 
     message["From"] = sender
     message["To"] = receiver
-    message["Subject"] = subject + " OJS-DSpace-Migration: Report"
+    message["Subject"] = subject + " " + system.upper() +\
+        "-DSpace-Migration: Report"
+    message["Date"] = formatdate(localtime=True)
     message.attach(MIMEText(content, "plain"))
 
     full_email = message.as_string()
