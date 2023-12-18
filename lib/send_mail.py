@@ -34,9 +34,15 @@ def send_report(sender, login, passwd, server, port, receiver, error,
     # report: The actual report
     content = ""  # "content" will be the body of the mail
     list_of_attachements = []
+    MaxEntries = 10
+    New_Data = False
     for key in report.keys():
+        if "elapsed time" not in key:
+            if "remote_url already set" not in key:
+                if "processed journals" not in key:
+                    New_Data = True # Something interesting to report
         content = content + key + ":\n"
-        if len(report[key]) > 20:
+        if len(report[key]) > MaxEntries:
             filename = ""
             for char in key:
                 if char.isalpha() or char.isdigit():
@@ -51,7 +57,7 @@ def send_report(sender, login, passwd, server, port, receiver, error,
                     file.write(str(item))
                     file.write("\n")
             list_of_attachements.append(filename)
-            content = content + "More than 20 entries!" + "\n"
+            content = content + "More than " + str(MaxEntries) + " entries!" + "\n"
             content = content + "Full list in file: " + filename + "\n"
         else:
             for item in report[key]:
@@ -89,13 +95,16 @@ def send_report(sender, login, passwd, server, port, receiver, error,
     message.attach(MIMEText(content, "plain"))
 
     full_email = message.as_string()
+    if New_Data: # Only send mail if something happened
+        try:
+            with create_smtp_session(login, passwd, server, port) as session:
+                session.sendmail(sender, receiver, full_email)
+        except (smtplib.SMTPException, ConnectionRefusedError) as exc:
+            logger = logging.getLogger('journals-logging-handler')
+            logger.error('could not send report %s', exc)
+    else:
+        print("Not sending email, nothing to report")
 
-    try:
-        with create_smtp_session(login, passwd, server, port) as session:
-            session.sendmail(sender, receiver, full_email)
-    except (smtplib.SMTPException, ConnectionRefusedError) as exc:
-        logger = logging.getLogger('journals-logging-handler')
-        logger.error('could not send report %s', exc)
 
     # Cleanup Step
     if list_of_attachements:

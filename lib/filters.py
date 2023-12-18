@@ -139,9 +139,10 @@ def _7_remove_double_metadata(k, value):  # eng-ger doubles
 
 def _8_fix_license(k, value):  # Make sure license URLs end with "/"
     if k == "dc.rights.uri":
-        if "http" in value:
-            if value[-1] != "/":
-                value = value + "/"
+        if value:
+            if "http" in value:
+                if value[-1] != "/":
+                    value = value + "/"
     return value
 
 # End of Custom ULB Functions

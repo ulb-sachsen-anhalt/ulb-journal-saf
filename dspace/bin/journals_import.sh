@@ -28,6 +28,13 @@ eperson="axel.bauer@bibliothek.uni-halle.de"
 eperson="shareit.admin@bibliothek.uni-halle.de"
 
 
+# Lockfilehandling
+DSPACE_BIN_DIR="/opt/dspace/repo/bin"
+LOCK_NAME=$1.lock
+LOCK_MAX_RETRY=10
+LOCK_SLEEP_PER_RETRY=60
+
+
 function write_doi() {
         doifilename=$1
         doi=$2
@@ -83,6 +90,8 @@ function import_saf() {
 }
 
 
+$DSPACE_BIN_DIR/tools/create_lock.sh $LOCK_NAME $LOCK_MAX_RETRY $LOCK_SLEEP_PER_RETRY || exit
+
 # we loop over zips in "$saf" folder and call import_saf function for every file
 for saf in "$safs"/*
     do
@@ -106,3 +115,6 @@ for saf in "$safs"/*
         fi
 
     done
+
+# Remove lock
+$DSPACE_BIN_DIR/tools/remove_lock.sh $LOCK_NAME || exit
