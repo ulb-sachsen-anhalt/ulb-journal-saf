@@ -46,9 +46,11 @@ class TransferSAF:
     def get_client(self) -> SSHClient:
         """get or recycle ssh client"""
         try:
-            transport = self.client.get_transport()
-            transport.send_ignore()
-            return self.client
+            if self.client is not None:
+                transport = self.client.get_transport()
+                if transport:
+                    transport.send_ignore()
+                return self.client
         except (AttributeError, EOFError):
             # connection is closed, reconnect
             logger.info(f'connect ssh {self.server}')
@@ -62,8 +64,6 @@ class TransferSAF:
                 key_filename=self.key_filename)
         except Exception as err:
             logger.error(err)
-            self.report.add('ERROR', err)
-            return None
         self.client = client
         return client
 
@@ -143,7 +143,7 @@ class TransferSAF:
                 state = f'fail: {line}'  # store first ERROR occu.
         return state
 
-    def get_handle(self, mapfile) -> any:
+    def get_handle(self, mapfile) -> str | None:
         cmd = (
             f"docker exec --user {self.docker_user} {self.docker_container} "
             f"cat {self.docker_mapfile}{mapfile}")
