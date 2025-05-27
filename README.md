@@ -1,4 +1,4 @@
-# Harvesting and export of datasets from the ULB Sachsen-Anhalt's OJS/OMP installations to a DSpace based Repository
+# Harvesting and export of datasets from the ULB Sachsen-Anhalt's OJS/OMP (Version 3.4) installations to a DSpace based Repository
 
 
 ## General Goals 
