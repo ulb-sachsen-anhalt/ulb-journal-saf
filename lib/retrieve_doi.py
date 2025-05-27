@@ -32,11 +32,13 @@ class RetrieveDOI:
         self.user = s['user']
         self.key_filename = s['key_filename']
 
-    def get_client(self) -> SSHClient:
+    def get_client(self) -> SSHClient | None:
         try:
-            transport = self.client.get_transport()
-            transport.send_ignore()
-            return self.client
+            if self.client is not None:
+                transport = self.client.get_transport()
+                if transport:
+                    transport.send_ignore()
+                return self.client
         except (AttributeError, EOFError):
             # connection is closed, reconnect
             logger.info(f'connect ssh {self.server}')
@@ -99,7 +101,3 @@ class RetrieveDOI:
                 logger.info(f"{count_done} DOI files already processed")
             client.close()
             logger.info(f'{count} DOI files copied')
-
-    def copy(self) -> dict:
-        saf_files = self.get_files()
-        self.copy_files(saf_files)
