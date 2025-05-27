@@ -33,7 +33,7 @@ logger = logging.getLogger('journals-logging-handler')
 
 CP = ConfigParser()
 # preserving capital letters with monkey patch
-CP.optionxform = lambda option: option
+CP.optionxform = lambda option: option  # type: ignore[method-assign]
 
 
 class Report:
@@ -50,7 +50,7 @@ class Report:
     def __get__(self):
         return str(self.report)
 
-    def has_error(self) -> bool():
+    def has_error(self) -> bool:
         "check if error occurs"
         for key in self.report.keys():
             if 'error' in key.lower():
@@ -61,7 +61,7 @@ class Report:
         print('################### report ###################')
         for k, v in self.report.items():
             print(f"{k}: {', '.join(map(str, v))} "
-                  f"{'['+str(len(v))+']' if len(v)>1 else ''}")
+                  f"{'['+str(len(v))+']' if len(v) > 1 else ''}")
         print('################### report ###################')
 
 
@@ -81,6 +81,7 @@ class TaskDispatcher:
         self.report = Report()
         self.duration = 1
 
+    @staticmethod
     def gauge(func):
         def to_time(self):
             start = datetime.now()
@@ -90,6 +91,7 @@ class TaskDispatcher:
             self.duration = delta.split('.')[0]
         return to_time
 
+    @staticmethod
     def update_doi_constraint(func):
         def check_and_proceed(self):
             do_writedoi = CP.getboolean('general', 'update_remote')
@@ -106,7 +108,8 @@ class TaskDispatcher:
         self.write_remote_url()
 
     def data_poll(self) -> None:
-        dp = DataPoll(CP, self.report, WHITE, BLACK)
+        # dp = DataPoll(CP, self.report, WHITE, BLACK)
+        dp = DataPoll(CP, self.report)
         dp.determine_done()
         dp.request_publishers()
         dp.serialise_data()
@@ -115,7 +118,8 @@ class TaskDispatcher:
         self.datapoll = dp
 
     def export_saf_archive(self) -> None:
-        publishers = self.datapoll.publishers
+        if self.datapoll is not None:
+            publishers = self.datapoll.publishers
         exportsaf = ExportSAF(CP, self.report, publishers)
         exportsaf.export()
         exportsaf.write_zips()
@@ -176,7 +180,7 @@ def init_logger():
     LOG_FILE_FORMAT = '%Y-%m-%d'
     date_ = time.strftime(LOG_FILE_FORMAT, time.localtime())
     logfile_name = Path(logpath, f"http_record_handler_{date_}.log")
-    conf_logname = {'logname': logfile_name}
+    conf_logname = {'logname': str(logfile_name)}
     home_ = Path(__file__).parent.absolute()
     print(f'{home_}/conf/logging.conf')
     try:
@@ -222,9 +226,10 @@ if __name__ == "__main__":
     CP.read(conf_meta)
     WHITE = CP.get('white-list', 'journals', fallback='').split()
     BLACK = CP.get('black-list', 'journals', fallback='').split()
-    WHITE and print(f"{now} [INFO] use white list: {WHITE}")
-    BLACK and print(f"{now} [INFO] use black list: {BLACK}")
-
+    if WHITE:
+        print(f"{now} [INFO] use white list: {WHITE}")
+    if BLACK:
+        print(f"{now} [INFO] use black list: {BLACK}")
     init_logger()
 
     main()
