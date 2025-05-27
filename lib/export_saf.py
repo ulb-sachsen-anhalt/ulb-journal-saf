@@ -34,7 +34,6 @@ class ExportSAF:
         self.system = g['system']
         self.export_path = e['export_path']
         self.collection = e['collection']
-        self.token = f"&apiToken={g['api_token']}"
         self.journal_server = g['journal_server']
         self.type = g['type']
         self.generate_filename = e.getboolean(
@@ -78,8 +77,9 @@ class ExportSAF:
         """transform locale to isolang e.g. 'de_DE'-->'ger' """
         locale = local_code[0:2]
         lang = pycountry.languages.get(alpha_2=locale)
-        isolang = lang.bibliographic if hasattr(lang, 'bibliographic')\
-            else lang.alpha_3
+        isolang = getattr(lang, 'bibliographic')\
+            if hasattr(lang, 'bibliographic')\
+            else getattr(lang, 'alpha_3')
         return isolang
 
     @staticmethod
@@ -213,8 +213,9 @@ class ExportSAF:
             if not self.generate_filename:
                 try:
                     cd = response.headers.get('Content-Disposition')
-                    filename = cd.split('"')[1]
-                    filename = self.clean_filename(filename)
+                    if cd is not None:
+                        filename = cd.split('"')[1]
+                        filename = self.clean_filename(filename)
                 except Exception:
                     logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
@@ -254,14 +255,16 @@ class ExportSAF:
                 self.report.add(f'error download file code:{status_code}', url)
                 continue
             mime_type = response.headers.get('content-type')
-            extension = mimetypes.guess_extension(mime_type)
+            if mime_type is not None:
+                extension = mimetypes.guess_extension(mime_type)
             filename = '{}_volume_{}{}'.format(
                 context.url_path, submission.seriesPosition, extension)
             if not self.generate_filename:
                 try:
                     cd = response.headers.get('Content-Disposition')
-                    filename = cd.split('"')[1]
-                    filename = self.clean_filename(filename)
+                    if cd is not None:
+                        filename = cd.split('"')[1]
+                        filename = self.clean_filename(filename)
                 except Exception:
                     logger.warning(f'could not extract filename from {cd}')
             export_path = work_dir / filename
@@ -365,7 +368,7 @@ class ExportSAF:
                         logger.info('empty file content to save space')
                     continue
                 zipfile = shutil.make_archive(
-                    export_pth / name, 'zip', item)
+                    str(export_pth / name), 'zip', item)
                 zipsize = Path(zipfile).stat().st_size
                 size_abs += zipsize
                 fsize = zipsize >> 20 and str(zipsize >> 20) + " Mb"\
